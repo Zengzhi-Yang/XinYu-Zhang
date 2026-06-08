@@ -1,571 +1,343 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <title>原电池微观原理：自发反应判定演示</title>
-    <style>
-        body {
-            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
-            background-color: #f0f4f8;
-            display: flex; flex-direction: column; align-items: center;
-            padding: 20px; color: #2d3436;
-        }
-        .container {
-            background: white; padding: 25px; border-radius: 16px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-            max-width: 900px; width: 100%;
-        }
-        h2 { text-align: center; margin-bottom: 5px; color: #2c3e50; }
-        .desc { text-align: center; color: #7f8c8d; font-size: 14px; margin-bottom: 20px; }
-        
-        canvas {
-            background: #ffffff;
-            border: 1px solid #dfe6e9; border-radius: 8px;
-            display: block; margin: 0 auto;
-            box-shadow: inset 0 0 30px rgba(0,0,0,0.03);
-        }
+  <meta charset="UTF-8" />
+  <title>3D 有机动画演示</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
 
-        .controls {
-            margin-top: 25px; display: grid;
-            grid-template-columns: 1fr auto 1fr; gap: 20px;
-            background: #f8f9fa; padding: 20px; border-radius: 12px;
-            align-items: start;
-        }
-        .panel { display: flex; flex-direction: column; gap: 8px; }
-        label { font-weight: bold; font-size: 14px; color: #636e72; }
-        select { padding: 8px; border-radius: 6px; border: 1px solid #b2bec3; }
-        .badge { 
-            font-size: 12px; padding: 3px 8px; border-radius: 10px; 
-            background: #dfe6e9; color: #636e72; display: inline-block; margin-top: 5px; text-align: center;
-        }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 30px 20px;
+    }
 
-        .center-panel {
-            display: flex; flex-direction: column; align-items: center;
-            min-width: 200px;
-        }
-        
-        /* 状态指示器样式 */
-        #statusIndicator {
-            font-size: 14px; font-weight: 800; letter-spacing: 1px;
-            margin-bottom: 5px; min-height: 20px;
-            transition: color 0.3s;
-        }
-        
-        button#mainBtn {
-            margin-top: 10px;
-            padding: 10px 30px;
-            background: linear-gradient(135deg, #0984e3, #74b9ff);
-            color: white; border: none; border-radius: 25px;
-            font-size: 16px; font-weight: bold; cursor: pointer;
-            transition: transform 0.1s, box-shadow 0.2s, background 0.2s;
-        }
-        button#mainBtn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 4px 10px rgba(9, 132, 227, 0.3); }
-        button#mainBtn:disabled { background: #b2bec3; cursor: not-allowed; transform: none; box-shadow: none; opacity: 0.7; }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
 
-        .speed-ctrl { margin-top: 15px; display: flex; gap: 5px; background: #dfe6e9; padding: 4px; border-radius: 20px; }
-        .speed-btn {
-            border: none; background: transparent; padding: 4px 12px; border-radius: 16px;
-            font-size: 12px; cursor: pointer; color: #636e72; font-weight: bold;
-        }
-        .speed-btn.active { background: white; color: #0984e3; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    /* 标题区域 */
+    .header {
+      text-align: center;
+      margin-bottom: 30px;
+    }
 
-        .legend { margin-top: 15px; display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; font-size: 13px; color: #555; }
-        .l-item { display: flex; align-items: center; }
-        .dot { width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; }
-    </style>
+    .header h1 {
+      color: #fff;
+      font-size: 32px;
+      font-weight: 700;
+      margin-bottom: 10px;
+      text-shadow: 0 2px 10px rgba(0,0,0,0.2);
+      letter-spacing: 2px;
+    }
+
+    .header .subtitle {
+      color: rgba(255,255,255,0.85);
+      font-size: 16px;
+      font-weight: 400;
+    }
+
+    /* 控制区域 */
+    .control-card {
+      background: rgba(255,255,255,0.95);
+      backdrop-filter: blur(10px);
+      border-radius: 16px;
+      padding: 24px 32px;
+      margin-bottom: 24px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+
+    .control-label {
+      font-size: 16px;
+      font-weight: 600;
+      color: #333;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .control-label .icon {
+      font-size: 20px;
+    }
+
+    .select-wrapper {
+      position: relative;
+      flex: 1;
+      min-width: 280px;
+    }
+
+    select {
+      width: 100%;
+      font-size: 15px;
+      padding: 14px 45px 14px 18px;
+      border-radius: 12px;
+      border: 2px solid #e0e0e0;
+      background: #fff;
+      color: #333;
+      cursor: pointer;
+      appearance: none;
+      transition: all 0.3s ease;
+      outline: none;
+    }
+
+    select:hover {
+      border-color: #667eea;
+    }
+
+    select:focus {
+      border-color: #667eea;
+      box-shadow: 0 0 0 4px rgba(102,126,234,0.15);
+    }
+
+    .select-wrapper::after {
+      content: "▼";
+      position: absolute;
+      right: 18px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #667eea;
+      font-size: 12px;
+      pointer-events: none;
+    }
+
+    /* 动画信息卡片 */
+    .anim-info {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .info-tag {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #fff;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.3s ease;
+      cursor: default;
+    }
+
+    .info-tag:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 15px rgba(102,126,234,0.4);
+    }
+
+    .info-tag .tag-icon {
+      font-size: 14px;
+    }
+
+    /* iframe 容器 */
+    .iframe-wrapper {
+      position: relative;
+      width: 100%;
+      height: 0;
+      padding-bottom: 70%;
+      background: #fff;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+      overflow: hidden;
+      transition: all 0.3s ease;
+    }
+
+    .iframe-wrapper:hover {
+      box-shadow: 0 25px 70px rgba(0,0,0,0.25);
+    }
+
+    iframe {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      border: none;
+      background: #fff;
+    }
+
+    /* 底部提示 */
+    .footer {
+      text-align: center;
+      margin-top: 24px;
+      color: rgba(255,255,255,0.7);
+      font-size: 14px;
+    }
+
+    .footer a {
+      color: rgba(255,255,255,0.9);
+      text-decoration: none;
+      border-bottom: 1px dashed rgba(255,255,255,0.5);
+      transition: all 0.3s ease;
+    }
+
+    .footer a:hover {
+      color: #fff;
+      border-bottom-color: #fff;
+    }
+
+    /* 响应式设计 */
+    @media (max-width: 768px) {
+      body {
+        padding: 20px 15px;
+      }
+
+      .header h1 {
+        font-size: 24px;
+      }
+
+      .control-card {
+        padding: 20px;
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .select-wrapper {
+        min-width: 100%;
+      }
+
+      .iframe-wrapper {
+        padding-bottom: 75%;
+        border-radius: 16px;
+      }
+    }
+
+    /* 加载动画 */
+    .loading {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #fff;
+      z-index: 10;
+    }
+
+    .loading-spinner {
+      width: 50px;
+      height: 50px;
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #667eea;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .loading.hidden {
+      display: none;
+    }
+  </style>
 </head>
 <body>
-
-<div class="container">
-    <h2>原电池微观原理：盐桥离子扩散演示</h2>
-    <div class="desc">观察盐桥中的 K⁺ 与 Cl⁻ 如何从管口涌出并扩散至溶液中以平衡电荷</div>
-    
-    <canvas id="cvs" width="800" height="500"></canvas>
-
-    <div class="legend">
-        <div class="l-item"><span class="dot" style="background:#f1c40f;"></span>电子 (e⁻)</div>
-        <div class="l-item"><span class="dot" style="background:#b2bec3;"></span>负极金属离子</div>
-        <div class="l-item"><span class="dot" style="background:#0984e3;"></span>正极溶液离子</div>
-        <div class="l-item"><span class="dot" style="background:#2ecc71;"></span>盐桥 Cl⁻</div>
-        <div class="l-item"><span class="dot" style="background:#9b59b6;"></span>盐桥 K⁺</div>
+  <div class="container">
+    <div class="header">
+      <h1>🧪 3D 有机化学动画演示</h1>
+      <p class="subtitle">交互式分子模型 · 动态反应机理 · 可视化学习体验</p>
     </div>
 
-    <div class="controls">
-        <div class="panel">
-            <label>负极材料 (Anode)</label>
-            <select id="selAnode" onchange="update()"></select>
-            <div id="infoAnode" class="badge">--</div>
-        </div>
-
-        <div class="center-panel">
-            <!-- 状态指示器替代了原来的静态 CONTROLS 文本 -->
-            <div id="statusIndicator">CHECKING...</div>
-            <button id="mainBtn" onclick="toggle()">开始实验</button>
-            
-            <div class="speed-ctrl">
-                <button class="speed-btn" onclick="spd(0.5, this)">0.5x</button>
-                <button class="speed-btn active" onclick="spd(1.0, this)">1.0x</button>
-                <button class="speed-btn" onclick="spd(2.0, this)">2.0x</button>
-            </div>
-        </div>
-
-        <div class="panel">
-            <label>正极材料 (Cathode)</label>
-            <select id="selCathode" onchange="update()"></select>
-            <div id="infoCathode" class="badge">--</div>
-        </div>
+    <div class="control-card">
+      <div class="control-label">
+        <span class="icon">🎯</span>
+        <span>选择动画</span>
+      </div>
+      <div class="select-wrapper">
+        <select id="anim-select">
+          <option value="isopropyl-cyclopropane.html">异丙基环丙烷 3D 反应机理教学</option>
+          <option value="co2.html">二氧化碳杂化与成键教学</option>
+          <option value="styrene.html">苯乙烯共线共面教学</option>
+        </select>
+      </div>
+      <div class="anim-info" id="anim-info">
+        <span class="info-tag" id="tag-type">
+          <span class="tag-icon">⚡</span>
+          <span>反应机理</span>
+        </span>
+        <span class="info-tag" id="tag-topic">
+          <span class="tag-icon">📚</span>
+          <span>亲核加成</span>
+        </span>
+      </div>
     </div>
-</div>
 
-<script>
-    // --- 1. 化学配置 ---
-    const DB = {
-        mg: { n:"镁 (Mg)", ion:"Mg²⁺", v:2, e:-2.37, c:"#bdc3c7", sol:"rgba(189, 195, 199, 0.2)" },
-        al: { n:"铝 (Al)", ion:"Al³⁺", v:3, e:-1.66, c:"#ecf0f1", sol:"rgba(236, 240, 241, 0.2)" },
-        zn: { n:"锌 (Zn)", ion:"Zn²⁺", v:2, e:-0.76, c:"#95a5a6", sol:"rgba(149, 165, 166, 0.25)" }, 
-        fe: { n:"铁 (Fe)", ion:"Fe²⁺", v:2, e:-0.44, c:"#2c3e50", sol:"rgba(46, 204, 113, 0.25)" }, 
-        cu: { n:"铜 (Cu)", ion:"Cu²⁺", v:2, e:0.34,  c:"#d35400", sol:"rgba(9, 132, 227, 0.25)" }, 
-        ag: { n:"银 (Ag)", ion:"Ag⁺",  v:1, e:0.80,  c:"#f5f6fa", sol:"rgba(223, 230, 233, 0.2)" }
+    <div class="iframe-wrapper">
+      <div class="loading" id="loading">
+        <div class="loading-spinner"></div>
+      </div>
+      <iframe id="anim-iframe" src="isopropyl-cyclopropane.html" onload="hideLoading()"></iframe>
+    </div>
+
+    <div class="footer">
+      <p>💡 操作提示：左键拖动旋转视角 | 按住 Ctrl+左键平移位置 | 滚轮缩放大小</p>
+    </div>
+  </div>
+
+  <script>
+    const select = document.getElementById('anim-select');
+    const iframe = document.getElementById('anim-iframe');
+    const loading = document.getElementById('loading');
+    const tagType = document.getElementById('tag-type');
+    const tagTopic = document.getElementById('tag-topic');
+
+    // 动画信息配置
+    const animInfo = {
+      'isopropyl-cyclopropane.html': {
+        type: { icon: '⚡', text: '反应机理' },
+        topic: { icon: '📚', text: '亲核加成' }
+      },
+      'co2.html': {
+        type: { icon: '🔬', text: '杂化轨道' },
+        topic: { icon: '🧪', text: 'π键形成' }
+      },
+      'styrene.html': {
+        type: { icon: '📐', text: '空间构型' },
+        topic: { icon: '🔗', text: '共线共面' }
+      }
     };
 
-    const STATE = {
-        anode: 'zn', cathode: 'cu',
-        running: false, speed: 1.0, valid: true,
-        voltage: 1.10,
-        electronBuffer: 0, 
-        finished: false
-    };
-
-    const TIME_SCALE = 0.3; 
-    const INITIAL_IONS = 12; 
-    const PIXELS_PER_STEP = 2; 
-
-    // 画布与几何
-    const cvs = document.getElementById('cvs');
-    const ctx = cvs.getContext('2d');
-    const W=800, H=500;
-    const LX=150, RX=550, BY=200, BW=160, BH=220, LIQ=230; 
-    const CENTER_X = 430;
-
-    // 细盐桥
-    const SB_W_OUTER = 24; 
-    const SB_W_INNER = 16;
-    const SB_LX = LX + BW - 30; 
-    const SB_RX = RX + 30;      
-    const SB_EXIT_Y = LIQ + 30;
-
-    let parts = []; 
-    let lossPx = 0; 
-    let gainPx = 0; 
-    let tick = 0;
-    let animId = null;
-
-    function init() {
-        const sA = document.getElementById('selAnode');
-        const sC = document.getElementById('selCathode');
-        for(let k in DB) {
-            sA.add(new Option(DB[k].n, k));
-            sC.add(new Option(DB[k].n, k));
-        }
-        sA.value = 'zn'; sC.value = 'cu';
-        update();
-        loop();
+    function hideLoading() {
+      loading.classList.add('hidden');
     }
 
-    window.update = function() {
-        const kA = document.getElementById('selAnode').value;
-        const kC = document.getElementById('selCathode').value;
-        const mA = DB[kA];
-        const mC = DB[kC];
-        const volt = mC.e - mA.e;
-
-        document.getElementById('infoAnode').innerHTML = `E⁰=${mA.e>0?'+':''}${mA.e.toFixed(2)}V`;
-        document.getElementById('infoCathode').innerHTML = `E⁰=${mC.e>0?'+':''}${mC.e.toFixed(2)}V`;
-        
-        const btn = document.getElementById('mainBtn');
-        const statusEl = document.getElementById('statusIndicator');
-
-        STATE.running = false;
-        STATE.finished = false;
-        STATE.electronBuffer = 0;
-        btn.innerText = "开始实验";
-        parts = []; lossPx = 0; gainPx = 0; tick = 0;
-
-        // 【判定逻辑】
-        if (volt > 0 && kA !== kC) {
-            // 可以构成原电池
-            STATE.valid = true;
-            STATE.voltage = volt;
-            btn.disabled = false;
-            
-            // 绿色提示
-            statusEl.innerText = "✓ SYSTEM READY";
-            statusEl.style.color = "#27ae60"; // Green
-            
-            prefillIons(); 
-        } else {
-            // 不能反应 (电动势 <= 0)
-            STATE.valid = false;
-            btn.disabled = true;
-
-            // 红色提示
-            statusEl.innerText = "✕ NO REACTION";
-            statusEl.style.color = "#e74c3c"; // Red
-        }
-        STATE.anode = kA; STATE.cathode = kC;
-    };
-
-    function prefillIons() {
-        for(let i=0; i<INITIAL_IONS; i++) {
-            const px = RX + 10 + Math.random() * (BW - 20); 
-            const py = LIQ + 10 + Math.random() * (BH - (LIQ-BY) - 20);
-            parts.push(new Part('cat_ion', px, py));
-        }
+    function showLoading() {
+      loading.classList.remove('hidden');
     }
 
-    window.toggle = function() {
-        if(STATE.finished) { update(); return; }
-        STATE.running = !STATE.running;
-        document.getElementById('mainBtn').innerText = STATE.running ? "暂停实验" : "继续实验";
-    };
-
-    window.spd = function(val, el) {
-        STATE.speed = val;
-        document.querySelectorAll('.speed-btn').forEach(b => b.classList.remove('active'));
-        el.classList.add('active');
-    };
-
-    class Part {
-        constructor(type, startX, startY) {
-            this.type = type; 
-            this.active = true;
-            this.life = 6000;
-            this.vx = 0; this.vy = 0;
-            this.depositing = false;
-            this.highlightVal = 0;
-
-            if (startX !== undefined) {
-                this.x = startX; this.y = startY;
-                this.vx = (Math.random() - 0.5) * 1.5; 
-                this.vy = (Math.random() - 0.5) * 1.5;
-                this.mode = 1; 
-            } else {
-                if(type === 'an_ion') { 
-                    const wCurrent = 40 - lossPx;
-                    this.x = LX + 80 + wCurrent/2 + 2; 
-                    this.y = LIQ + 10 + Math.random() * (BH - (LIQ-BY) - 30);
-                    this.vx = 1.0 + Math.random() * 0.5; 
-                    this.vy = (Math.random()-0.5) * 1.5;
-                    this.mode = 0; 
-                    this.highlightVal = 1.0; 
-                }
-                else if(type === 'e') { 
-                    this.x = LX+80; this.y = LIQ-10;
-                    this.mode = 0; 
-                }
-                else if(type === 'cl' || type === 'k') { 
-                    // 上移 75px
-                    this.y = SB_EXIT_Y - 75; 
-                    this.x = (type==='cl') ? SB_LX : SB_RX;
-                    this.x += (Math.random()-0.5)*8; 
-                    this.vy = 1.0; 
-                    this.vx = (Math.random()-0.5) * 0.2; 
-                    this.mode = 0; 
-                }
-            }
-        }
-
-        update() {
-            const dt = STATE.speed * TIME_SCALE;
-            const mC = DB[STATE.cathode];
-
-            if(this.type === 'an_ion' && this.highlightVal > 0) {
-                this.highlightVal -= 0.02 * dt; 
-                if(this.highlightVal < 0) this.highlightVal = 0;
-            }
-
-            if(this.type === 'e') {
-                const s = 4 * dt;
-                if(this.mode===0) { this.y-=s; if(this.y<=80) {this.y=80; this.mode=1;} }
-                else if(this.mode===1) { this.x+=s*1.5; if(this.x>=RX+80) this.mode=2; }
-                else if(this.mode===2) { 
-                    this.y+=s; 
-                    if(this.y >= LIQ+30) { 
-                        this.active = false;
-                        if(STATE.running) {
-                            STATE.electronBuffer++;
-                            if(STATE.electronBuffer >= mC.v) {
-                                triggerDeposition();
-                                STATE.electronBuffer -= mC.v;
-                            }
-                        }
-                    }
-                }
-                return;
-            }
-
-            // 柔和运动参数
-            const randomForce = 0.25;
-            const damping = 0.98;
-
-            if(this.type === 'cat_ion') {
-                if(this.depositing) {
-                    const wCurrent = 40 + gainPx;
-                    const targetX = RX + 80 + wCurrent/2; 
-                    
-                    const dx = targetX - this.x;
-                    this.vx += dx * 0.05; 
-                    this.vx *= 0.8;       
-                    this.vy *= 0.8;       
-
-                    this.x += this.vx * dt;
-                    this.y += this.vy * dt;
-
-                    if(Math.abs(dx) < 4) {
-                        this.active = false; 
-                        gainPx += PIXELS_PER_STEP; 
-                        checkFinish(); 
-                    }
-                } else {
-                    this.vx += (Math.random() - 0.5) * randomForce; 
-                    this.vy += (Math.random() - 0.5) * randomForce;
-                    this.vx *= damping;
-                    this.vy *= damping;
-                    this.x += this.vx * dt;
-                    this.y += this.vy * dt;
-                }
-            }
-            else if(this.type === 'an_ion') {
-                this.vx += (Math.random() - 0.5) * randomForce;
-                this.vy += (Math.random() - 0.5) * randomForce;
-                this.vx *= 0.97;
-                this.vy *= 0.97;
-                this.x += this.vx * dt;
-                this.y += this.vy * dt;
-                this.life -= 1 * dt;
-                if(this.life <= 0) this.active = false;
-            }
-            else if(this.type === 'cl' || this.type === 'k') {
-                if(this.mode === 0) {
-                    this.y += this.vy * dt;
-                    this.x += this.vx * dt;
-                    if(this.y > SB_EXIT_Y + 10 + Math.random()*20) this.mode = 1; 
-                } else {
-                    this.vx += (Math.random() - 0.5) * randomForce;
-                    this.vy += (Math.random() - 0.5) * randomForce;
-                    this.vx *= damping; this.vy *= damping;
-                    this.x += this.vx * dt;
-                    this.y += this.vy * dt;
-                }
-                this.life -= 1 * dt;
-                if(this.life <= 0) this.active = false;
-            }
-
-            let minX, maxX;
-            const wallBounce = -0.6; 
-            if(this.type==='an_ion' || this.type==='cl') { minX=LX; maxX=LX+BW; } 
-            else { minX=RX; maxX=RX+BW; }
-
-            if(this.x < minX + 8) { this.x = minX + 8; this.vx *= wallBounce; this.vx += 0.2; }
-            if(this.x > maxX - 8) { this.x = maxX - 8; this.vx *= wallBounce; this.vx -= 0.2; }
-            if(this.y < LIQ + 5) { this.y = LIQ + 5; this.vy *= wallBounce; this.vy += 0.2; }
-            if(this.y > BY+BH-8) { this.y = BY+BH-8; this.vy *= wallBounce; this.vy -= 0.2; }
-        }
-
-        draw() {
-            const mA = DB[STATE.anode];
-            const mC = DB[STATE.cathode];
-            ctx.beginPath();
-            ctx.font = '10px Arial'; ctx.textAlign = 'center'; ctx.textBaseline='middle';
-            
-            ctx.shadowBlur = 0;
-
-            if(this.type==='e') {
-                ctx.fillStyle='#f1c40f'; 
-                ctx.arc(this.x,this.y,4,0,6.28); 
-                ctx.fill(); 
-            }
-            else if(this.type==='an_ion') {
-                if(this.highlightVal > 0.05) {
-                    ctx.save();
-                    ctx.shadowBlur = 10; 
-                    ctx.shadowColor = '#ffffff'; 
-                    ctx.fillStyle = `rgba(255, 255, 255, ${this.highlightVal})`;
-                    ctx.arc(this.x,this.y,7,0,6.28); ctx.fill();
-                    ctx.fillStyle = `rgba(0,0,0,${this.highlightVal})`; 
-                    ctx.fillText(mA.ion, this.x, this.y);
-                    ctx.restore();
-                    if(this.highlightVal < 0.8) {
-                        ctx.fillStyle = '#b2bec3';
-                        ctx.globalAlpha = 1 - this.highlightVal;
-                        ctx.beginPath(); ctx.arc(this.x,this.y,7,0,6.28); ctx.fill();
-                        ctx.fillStyle='#000'; ctx.fillText(mA.ion, this.x, this.y);
-                        ctx.globalAlpha = 1.0;
-                    }
-                } else {
-                    ctx.fillStyle='#b2bec3'; ctx.arc(this.x,this.y,7,0,6.28); ctx.fill();
-                    ctx.fillStyle='#000'; ctx.fillText(mA.ion, this.x, this.y);
-                }
-            }
-            else if(this.type==='cat_ion') {
-                if(this.depositing) {
-                    ctx.save();
-                    ctx.shadowBlur = 15;
-                    ctx.shadowColor = '#f1c40f'; 
-                    ctx.fillStyle = '#fffce6'; 
-                    ctx.arc(this.x,this.y,8,0,6.28); ctx.fill();
-                    ctx.strokeStyle = '#f39c12'; ctx.lineWidth = 2; ctx.stroke();
-                    ctx.restore();
-                } else {
-                    ctx.fillStyle='#0984e3'; ctx.arc(this.x,this.y,7,0,6.28); ctx.fill();
-                    ctx.fillStyle='#fff'; ctx.fillText(mC.ion, this.x, this.y);
-                }
-            }
-            else if(this.type==='cl') {
-                ctx.fillStyle='#2ecc71'; ctx.arc(this.x,this.y,6,0,6.28); ctx.fill();
-                ctx.fillStyle='#fff'; ctx.fillText('Cl⁻', this.x, this.y);
-            }
-            else if(this.type==='k') {
-                ctx.fillStyle='#9b59b6'; ctx.arc(this.x,this.y,6,0,6.28); ctx.fill();
-                ctx.fillStyle='#fff'; ctx.fillText('K⁺', this.x, this.y);
-            }
-        }
+    function updateInfo(filename) {
+      const info = animInfo[filename];
+      if (info) {
+        tagType.querySelector('span:last-child').textContent = info.type.text;
+        tagType.querySelector('.tag-icon').textContent = info.type.icon;
+        tagTopic.querySelector('span:last-child').textContent = info.topic.text;
+        tagTopic.querySelector('.tag-icon').textContent = info.topic.icon;
+      }
     }
 
-    function triggerDeposition() {
-        let candidates = parts.filter(p => p.type === 'cat_ion' && p.active && !p.depositing);
-        if(candidates.length > 0) {
-            candidates.sort((a,b) => a.x - b.x); 
-            const idx = Math.min(candidates.length - 1, Math.floor(Math.random() * 3));
-            candidates[idx].depositing = true; 
-        } else {
-            checkFinish();
-        }
+    function switchAnimation() {
+      const url = select.value;
+      showLoading();
+      iframe.src = url;
+      updateInfo(url);
     }
 
-    function checkFinish() {
-        const count = parts.filter(p => p.type === 'cat_ion' && p.active).length;
-        if(count === 0 && !STATE.finished) {
-            STATE.running = false;
-            STATE.finished = true;
-            document.getElementById('mainBtn').innerText = "重置实验";
-        }
-    }
+    select.addEventListener('change', switchAnimation);
 
-    function spawn() {
-        if(!STATE.running) return;
-        const mA = DB[STATE.anode];
-        const freq = 100 / (STATE.speed * TIME_SCALE);
-        if(tick % Math.floor(freq * mA.v) === 0) {
-            lossPx += PIXELS_PER_STEP;
-            parts.push(new Part('an_ion'));
-            for(let i=0; i<mA.v; i++) {
-                const delay = 150 / TIME_SCALE;
-                setTimeout(()=>{ if(STATE.running) parts.push(new Part('e')); }, i*delay);
-                setTimeout(()=>{ if(STATE.running) parts.push(new Part('cl')); }, i*(120/TIME_SCALE));
-            }
-            for(let i=0; i<mA.v; i++) {
-                 setTimeout(()=>{ if(STATE.running) parts.push(new Part('k')); }, i*(120/TIME_SCALE) + 500);
-            }
-        }
-    }
-
-    function loop() {
-        ctx.clearRect(0,0,W,H);
-        drawStatic();
-        if(STATE.running) { spawn(); tick++; }
-        for(let i=parts.length-1; i>=0; i--) {
-            parts[i].update();
-            parts[i].draw();
-            if(!parts[i].active) parts.splice(i,1);
-        }
-        animId = requestAnimationFrame(loop);
-    }
-
-    function drawStatic() {
-        const mA = DB[STATE.anode];
-        const mC = DB[STATE.cathode];
-
-        ctx.lineWidth = 5; 
-        ctx.strokeStyle = '#7f8c8d'; 
-
-        // 烧杯
-        ctx.strokeRect(LX, BY, BW, BH);
-        ctx.fillStyle = mA.sol; ctx.fillRect(LX+3, LIQ, BW-6, BH-(LIQ-BY)-3);
-        ctx.strokeRect(RX, BY, BW, BH);
-        ctx.fillStyle = mC.sol; ctx.fillRect(RX+3, LIQ, BW-6, BH-(LIQ-BY)-3);
-
-        // --- 细盐桥 ---
-        ctx.lineJoin = 'round';
-        ctx.beginPath();
-        ctx.lineWidth = SB_W_OUTER; 
-        ctx.strokeStyle = '#bdc3c7'; 
-        ctx.moveTo(SB_LX, SB_EXIT_Y); ctx.lineTo(SB_LX, BY-50);
-        ctx.lineTo(SB_RX, BY-50); ctx.lineTo(SB_RX, SB_EXIT_Y); ctx.stroke();
-        ctx.beginPath();
-        ctx.lineWidth = SB_W_INNER; 
-        ctx.strokeStyle = 'rgba(236, 240, 241, 0.95)'; 
-        ctx.moveTo(SB_LX, SB_EXIT_Y); ctx.lineTo(SB_LX, BY-50);
-        ctx.lineTo(SB_RX, BY-50); ctx.lineTo(SB_RX, SB_EXIT_Y); ctx.stroke();
-
-        ctx.fillStyle = 'rgba(255,255,255,0.4)';
-        const rPipe = SB_W_OUTER / 2 - 2;
-        ctx.beginPath(); ctx.arc(SB_LX, SB_EXIT_Y, rPipe, 0, Math.PI, false); ctx.fill();
-        ctx.beginPath(); ctx.arc(SB_RX, SB_EXIT_Y, rPipe, 0, Math.PI, false); ctx.fill();
-
-        // --- 电极 ---
-        const AX = LX + 80; const ATOP = BY - 60;
-        const wA0 = 40; 
-        const wA1 = Math.max(4, 40 - lossPx); 
-        
-        ctx.fillStyle = mA.c;
-        ctx.fillRect(AX - wA0/2, ATOP, wA0, LIQ - ATOP);
-        ctx.fillRect(AX - wA1/2, LIQ, wA1, (BY+BH) - LIQ - 20);
-        
-        if(lossPx > 2) {
-            ctx.fillStyle = mA.sol;
-            for(let i=0; i<5; i++) {
-                ctx.beginPath(); ctx.arc(AX + Math.sin(tick*0.1+i)*8, LIQ+30+i*25, 3 + lossPx*0.2, 0, 6.28); ctx.fill();
-            }
-        }
-
-        const CX = RX + 80; const CTOP = BY - 60;
-        const wC0 = 40; 
-        const wC1 = 40 + gainPx; 
-        
-        ctx.fillStyle = mC.c;
-        ctx.fillRect(CX - wC0/2, CTOP, wC0, LIQ - CTOP);
-        ctx.fillRect(CX - wC1/2, LIQ, wC1, (BY+BH) - LIQ - 20);
-        
-        // --- 导线 & 电压表 ---
-        const VM_W = 100;
-        const VM_X = CENTER_X - VM_W/2; 
-
-        ctx.beginPath(); ctx.lineWidth=3; ctx.strokeStyle='#2d3436';
-        ctx.moveTo(LX+80, BY-60); ctx.lineTo(LX+80, 80); ctx.lineTo(VM_X, 80);
-        ctx.moveTo(RX+80, BY-60); ctx.lineTo(RX+80, 80); ctx.lineTo(VM_X + VM_W, 80);
-        ctx.stroke();
-
-        ctx.fillStyle='#2d3436'; ctx.fillRect(VM_X, 40, 100, 80);
-        ctx.fillStyle='#000'; ctx.fillRect(VM_X + 10, 50, 80, 40);
-        ctx.fillStyle = STATE.valid ? '#2ecc71' : '#e74c3c';
-        ctx.font = 'bold 22px Courier New'; ctx.textAlign='center';
-        ctx.fillText(STATE.valid && !STATE.finished ? STATE.voltage.toFixed(2)+"V" : "0.00 V", CENTER_X, 78);
-
-        ctx.font='bold 14px Arial'; ctx.fillStyle='#636e72';
-        ctx.fillText("  负极  (溶解)", LX+BW/2, BY-70);
-        ctx.fillText("  正极  (沉积)", RX+BW/2, BY-70);
-        ctx.fillText("盐桥", CENTER_X, 132);
-
-        if(STATE.finished) {
-            ctx.fillStyle = '#e67e22'; 
-            ctx.font = 'bold 16px Arial'; 
-            ctx.textAlign = 'center';
-            ctx.fillText("反应结束：溶液中阳离子已耗尽", CENTER_X, BY + BH + 30);
-        }
-    }
-
-    init();
-</script>
+    // 初始化信息
+    updateInfo(select.value);
+  </script>
 </body>
 </html>
