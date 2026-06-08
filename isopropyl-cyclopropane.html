@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>3D 异丙基环丙烷与HBr反应机理</title>
+    <style>
+        body { margin: 0; overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f0f0; }
+        #canvas-container { width: 100vw; height: 100vh; display: block; }
+        #ui-panel {
+            position: absolute; top: 20px; left: 20px; width: 320px;
+            background: rgba(255, 255, 255, 0.95); padding: 20px;
+            border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+            pointer-events: auto; backdrop-filter: blur(10px);
+        }
+        h3 { margin-top: 0; color: #333; font-size: 18px; border-bottom: 2px solid #007bff; padding-bottom: 10px; }
+        button {
+            width: 100%; padding: 12px; margin-bottom: 10px;
+            background: #007bff; color: white; border: none;
+            border-radius: 6px; font-weight: bold; cursor: pointer;
+            transition: all 0.3s; box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        button:hover:not(:disabled) { background: #0056b3; transform: translateY(-1px); }
+        button:disabled { background: #ccc; cursor: not-allowed; box-shadow: none; }
+        
+        /* 撤销按钮特定样式 */
+        #btnUndo { background: #6c757d; margin-top: 15px; }
+        #btnUndo:hover:not(:disabled) { background: #5a6268; }
+
+        label { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; cursor: pointer; font-size: 14px; color: #444; }
+        #instruction { color: #d32f2f; font-weight: bold; font-size: 14px; margin-top: 10px; display: none; line-height: 1.5; }
+        #controls-hint { position: absolute; bottom: 20px; left: 20px; color: #555; background: rgba(255,255,255,0.8); padding: 10px; border-radius: 8px; font-size: 13px; }
+    </style>
+    <!-- 引入 Three.js 和 OrbitControls -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+<body>
+
+    <div id="canvas-container"></div>
+
+    <div id="ui-panel">
+        <h3>异丙基环丙烷 3D 反应机理</h3>
+        <button id="btnClouds">1. 开启 sp³ 电子云</button>
+        <label><input type="checkbox" id="cbNumbers"> 显示碳原子编号</label>
+        <label><input type="checkbox" id="cbHydrogens" checked> 2. 显示碳上的氢原子</label>
+        
+        <button id="btnHBr">3. 引入 HBr 分子</button>
+        <button id="btnCleave" disabled>4. 发生断键 (H⁺ + Br⁻)</button>
+        
+        <div id="instruction">5. 请在 3D 场景中按住红色的 H⁺ 离子，将其拖拽至左侧三元环的碳原子(C2)附近。</div>
+        
+        <button id="btnRearrange" disabled>7. 发生氢离子重排</button>
+        
+        <!-- 增加的撤销按钮 -->
+        <button id="btnUndo" disabled>⬅ 上一步 (撤销)</button>
+    </div>
+
+    <div id="controls-hint">操作提示：左键拖动旋转视角 | 按住ctrl+左键平移位置 | 滚轮缩放大小</div>
+
+<script>
+    // --- 1. 初始化 Three.js 场景 ---
+    const container = document.getElementById('canvas-container');
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0xffffff);
+
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.set(10, 3, 14);
+
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = true;
+    container.appendChild(renderer.domElement);
+
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+
+    // 灯光
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+    scene.add(ambientLight);
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    dirLight.position.set(5, 10, 5);
+    dirLight.castShadow = true;
+    scene.add(dirLight);
+
+    // --- 2. 核心数据与状态 ---
+    let state = 0; // 0:初始, 1:HBr, 2:断键(可拖拽), 3:开环, 4:重排
+    let cloudsVisible = false;
+    let hyperconjugationActive = false;
+    
+    // UI 元素
+    const btnClouds = document.getElementById('btnClouds');
+    const cbNumbers = document.getElementById('cbNumbers');
+    const cbHydrogens = document.getElementById('cbHydrogens');
+    const btnHBr = document.getElementById('btnHBr');
+    const btnCleave = document.getElementById('btnCleave');
+    const btnRearrange = document.getElementById('btnRearrange');
+    const btnUndo = document.getElementById('btnUndo');
+    const instruction = document.getElementById('instruction');
+
+    // 材质
+    const matC = new THREE.MeshPhongMaterial({ color: 0x222222 });
+    const matH = new THREE.MeshPhongMaterial({ color: 0xe0e0e0 });
+    const matBr = new THREE.MeshPhongMaterial({ color: 0x8b0000 });
+    const matBond = new THREE.MeshPhongMaterial({ color: 0x888888 });
+    const matEmptyP = new THREE.MeshPhongMaterial({ color: 0xff0000, transparent: true, opacity: 0.4, depthWrite: false });
+
+    // 电子云颜色组
+    const lobeColors = [0x00ffff, 0xff66cc, 0xffb366, 0x99ff99]; 
+    
+    // 安全的定时器管理器 (方便在撤销时打断正在进行的延时任务)
+    let activeTimeouts = [];
+    function clearAllTimeouts() {
+        activeTimeouts.forEach(clearTimeout);
+        activeTimeouts = [];
+    }
+    function setSafeTimeout(cb, delay) {
+        let id = setTimeout(() => {
+            cb();
+            activeTimeouts = activeTimeouts.filter(t => t !== id);
+        }, delay);
+        activeTimeouts.push(id);
+        return id;
+    }
+
+    // 创建文字 Sprite 的辅助函数
+    function makeTextSprite(message, color = "rgba(0,0,0,1)", bg = "rgba(255,255,255,0.8)") {
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+        canvas.width = 128; canvas.height = 128;
+        context.fillStyle = bg;
+        context.beginPath(); context.arc(64, 64, 60, 0, Math.PI*2); context.fill();
+        context.font = "Bold 60px Arial";
+        context.fillStyle = color;
+        context.textAlign = "center";
+        context.textBaseline = "middle";
+        context.fillText(message, 64, 64);
+        const texture = new THREE.CanvasTexture(canvas);
+        const spriteMaterial = new THREE.SpriteMaterial({ map: texture, depthTest: false });
+        const sprite = new THREE.Sprite(spriteMaterial);
+        sprite.scale.set(0.6, 0.6, 1);
+        return sprite;
+    }
+
+    // --- 3. 构建立体分子模型 ---
+    const atomsData = {
+        C1: { pos: new THREE.Vector3(0, 0, 0), type: 'C' }, 
+        C2: { pos: new THREE.Vector3(1.0, 0.75, 0.83), type: 'C' }, 
+        C3: { pos: new THREE.Vector3(1.0, -0.75, 0.83), type: 'C' }, 
+        C4: { pos: new THREE.Vector3(-1.5, 0, 0), type: 'C' }, 
+        C5: { pos: new THREE.Vector3(-2.2, 1.2, 0.8), type: 'C' }, 
+        C6: { pos: new THREE.Vector3(-2.2, -1.2, -0.8), type: 'C' }, 
+        H_C1: { pos: new THREE.Vector3(-0.3, 0, -1.05), type: 'H', parent: 'C1' },
+        H_C4: { pos: new THREE.Vector3(-1.8, 0.3, -0.9), type: 'H', parent: 'C4' },
+        H_C2_1: { pos: new THREE.Vector3(1.5, 1.7, 0.5), type: 'H', parent: 'C2' },
+        H_C2_2: { pos: new THREE.Vector3(1.2, 0.6, 1.9), type: 'H', parent: 'C2' },
+        H_C3_1: { pos: new THREE.Vector3(1.5, -1.7, 0.5), type: 'H', parent: 'C3' },
+        H_C3_2: { pos: new THREE.Vector3(1.2, -0.6, 1.9), type: 'H', parent: 'C3' },
+        H_C5_1: { pos: new THREE.Vector3(-3.2, 1.2, 0.8), type: 'H', parent: 'C5' },
+        H_C5_2: { pos: new THREE.Vector3(-1.8, 2.2, 0.5), type: 'H', parent: 'C5' },
+        H_C5_3: { pos: new THREE.Vector3(-1.8, 1.0, 1.8), type: 'H', parent: 'C5' },
+        H_C6_1: { pos: new THREE.Vector3(-3.2, -1.2, -0.8), type: 'H', parent: 'C6' },
+        H_C6_2: { pos: new THREE.Vector3(-1.8, -2.2, -0.5), type: 'H', parent: 'C6' },
+        H_C6_3: { pos: new THREE.Vector3(-1.8, -1.0, -1.8), type: 'H', parent: 'C6' }
+    };
+
+    let bondsData = [
+        ['C1', 'C2'], ['C1', 'C3'], ['C2', 'C3'], 
+        ['C1', 'C4'], ['C4', 'C5'], ['C4', 'C6'], 
+        ['C1', 'H_C1'], ['C4', 'H_C4'],
+        ['C2', 'H_C2_1'], ['C2', 'H_C2_2'], ['C3', 'H_C3_1'], ['C3', 'H_C3_2'],
+        ['C5', 'H_C5_1'], ['C5', 'H_C5_2'], ['C5', 'H_C5_3'],
+        ['C6', 'H_C6_1'], ['C6', 'H_C6_2'], ['C6', 'H_C6_3']
+    ];
+
+    const atomMeshes = {};
+    const bondMeshes = {};
+    const orbitalGroup = new THREE.Group();
+    scene.add(orbitalGroup);
+
+    // 创建原子并记录初始位置(用于撤销恢复)
+    for (let key in atomsData) {
+        let data = atomsData[key];
+        data.origPos = data.pos.clone(); // ★ 保存原始坐标
+        let radius = data.type === 'C' ? 0.4 : 0.25;
+        let mat = data.type === 'C' ? matC : matH;
+        let mesh = new THREE.Mesh(new THREE.SphereGeometry(radius, 32, 32), mat);
+        mesh.position.copy(data.pos);
+        scene.add(mesh);
+        atomMeshes[key] = mesh;
+
+        // 添加编号
+        if (data.type === 'C') {
+            let numSprite = makeTextSprite(key.substring(1), "#000", "rgba(255,255,255,0.9)");
+            numSprite.position.set(0, 0.6, 0);
+            numSprite.visible = false;
+            mesh.add(numSprite);
+            data.sprite = numSprite;
+        }
+    }
+
+    // 创建键 (圆柱体)
+    function createBond(id1, id2) {
+        let p1 = atomMeshes[id1].position;
+        let p2 = atomMeshes[id2].position;
+        let distance = p1.distanceTo(p2);
+        let geom = new THREE.CylinderGeometry(0.08, 0.08, distance, 16);
+        geom.translate(0, distance / 2, 0);
+        geom.rotateX(Math.PI / 2); 
+
+        let mesh = new THREE.Mesh(geom, matBond);
+        mesh.position.copy(p1);
+        mesh.lookAt(p2);
+        scene.add(mesh);
+        
+        let bondId = id1 + '-' + id2;
+        bondMeshes[bondId] = mesh;
+        return mesh;
+    }
+
+    bondsData.forEach(pair => createBond(pair[0], pair[1]));
+
+    // 强制更新所有键的可视化(撤销时用)
+    function forceUpdateBonds() {
+        for (let bKey in bondMeshes) {
+            let parts = bKey.split('-');
+            let a1 = atomMeshes[parts[0]];
+            let a2 = atomMeshes[parts[1]];
+            if (a1 && a2) {
+                let p1 = a1.position;
+                let p2 = a2.position;
+                let dist = p1.distanceTo(p2);
+                let mesh = bondMeshes[bKey];
+                if (mesh) {
+                    mesh.position.copy(p1);
+                    mesh.lookAt(p2);
+                    let origHeight = mesh.geometry.parameters.height;
+                    mesh.scale.set(1, 1, dist / origHeight);
+                }
+            }
+        }
+    }
+
+    // --- 4. 生成与键严格对齐的 sp3 电子云 ---
+    const orbitalMeshes = [];
+
+    function createLobe(color) {
+        let geom = new THREE.SphereGeometry(0.35, 32, 16);
+        geom.translate(0, 0, 0.45); 
+        geom.scale(0.8, 0.8, 1.8);  
+        let mat = new THREE.MeshPhysicalMaterial({
+            color: color, transparent: true, opacity: 0.65, 
+            transmission: 0.5, roughness: 0.2, depthWrite: false
+        });
+        return new THREE.Mesh(geom, mat);
+    }
+
+    function generateOrbitals() {
+        while(orbitalGroup.children.length > 0){ 
+            orbitalGroup.remove(orbitalGroup.children[0]); 
+        }
+        orbitalMeshes.length = 0;
+
+        for (let i = 1; i <= 6; i++) {
+            let cId = 'C' + i;
+            let centerPos = atomMeshes[cId].position;
+            
+            let connectedIds = [];
+            bondsData.forEach(b => {
+                if (b[0] === cId) connectedIds.push(b[1]);
+                if (b[1] === cId) connectedIds.push(b[0]);
+            });
+
+            connectedIds.forEach((targetId, index) => {
+                let color = lobeColors[index % lobeColors.length];
+                let lobe = createLobe(color);
+                
+                lobe.position.copy(centerPos);
+                lobe.lookAt(atomMeshes[targetId].position);
+                lobe.userData = { parentC: cId, target: targetId, origQuat: lobe.quaternion.clone(), isTilting: false };
+                
+                orbitalGroup.add(lobe);
+                orbitalMeshes.push(lobe);
+            });
+
+            // ★ 修复：开环与重排后的对称双瓣 P 轨道，并且 C4 指向正确的方向
+            if (state === 3 && cId === 'C1') {
+                let emptyLobe = createLobe(0xff0000);
+                emptyLobe.material = matEmptyP;
+                emptyLobe.position.copy(centerPos);
+                let oldC2Pos = atomsData['C2'].origPos; 
+                emptyLobe.lookAt(oldC2Pos);
+                emptyLobe.userData = { parentC: 'C1', isP: true };
+                orbitalGroup.add(emptyLobe);
+
+                let emptyLobe2 = createLobe(0xff0000);
+                emptyLobe2.material = matEmptyP;
+                emptyLobe2.position.copy(centerPos);
+                let oppDir = centerPos.clone().sub(oldC2Pos).add(centerPos);
+                emptyLobe2.lookAt(oppDir);
+                orbitalGroup.add(emptyLobe2);
+            }
+            if (state >= 4 && cId === 'C4') {
+                let emptyLobe = createLobe(0xff0000);
+                emptyLobe.material = matEmptyP;
+                emptyLobe.position.copy(centerPos);
+                let oldHC4Pos = atomsData['H_C4'].origPos; // ★ 修复角度指向原先的H
+                emptyLobe.lookAt(oldHC4Pos);
+                emptyLobe.userData = { parentC: 'C4', isP: true };
+                orbitalGroup.add(emptyLobe);
+
+                let emptyLobe2 = createLobe(0xff0000);
+                emptyLobe2.material = matEmptyP;
+                emptyLobe2.position.copy(centerPos);
+                let oppDir = centerPos.clone().sub(oldHC4Pos).add(centerPos);
+                emptyLobe2.lookAt(oppDir);
+                orbitalGroup.add(emptyLobe2);
+            }
+        }
+        orbitalGroup.visible = cloudsVisible;
+    }
+    generateOrbitals();
+
+    // --- 5. 交互逻辑 (HBr, 拖拽, 撤销) ---
+    let objHBr_H, objHBr_Br, bondHBr;
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+    let isDragging = false;
+    let dragPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0); 
+
+    btnHBr.addEventListener('click', () => {
+        state = 1;
+        objHBr_H = new THREE.Mesh(new THREE.SphereGeometry(0.25, 32, 32), matH);
+        objHBr_Br = new THREE.Mesh(new THREE.SphereGeometry(0.5, 32, 32), matBr);
+        
+        objHBr_H.position.set(2.5, 3, 2);
+        objHBr_Br.position.set(3.5, 3, 2);
+        
+        scene.add(objHBr_H); scene.add(objHBr_Br);
+        
+        let geom = new THREE.CylinderGeometry(0.08, 0.08, 1, 16);
+        geom.translate(0, 0.5, 0); geom.rotateX(Math.PI/2);
+        bondHBr = new THREE.Mesh(geom, matBond);
+        bondHBr.position.copy(objHBr_H.position);
+        bondHBr.lookAt(objHBr_Br.position);
+        scene.add(bondHBr);
+
+        btnHBr.disabled = true;
+        btnCleave.disabled = false;
+        btnUndo.disabled = false;
+    });
+
+    btnCleave.addEventListener('click', () => {
+        state = 2;
+        scene.remove(bondHBr); 
+        
+        objHBr_H.position.x -= 0.5;
+        objHBr_Br.position.x += 0.5;
+        
+        let plusSprite = makeTextSprite("+", "#d32f2f");
+        plusSprite.position.set(0, 0.4, 0);
+        objHBr_H.add(plusSprite);
+        
+        let minusSprite = makeTextSprite("-", "#1976d2");
+        minusSprite.position.set(0, 0.6, 0);
+        objHBr_Br.add(minusSprite);
+
+        btnCleave.disabled = true;
+        instruction.style.display = 'block';
+    });
+
+    // 拖拽控制逻辑
+    window.addEventListener('pointerdown', (event) => {
+        if (state !== 2) return;
+        mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+        mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+        raycaster.setFromCamera(mouse, camera);
+        
+        const intersects = raycaster.intersectObject(objHBr_H);
+        if (intersects.length > 0) {
+            isDragging = true;
+            controls.enabled = false; 
+            dragPlane.setFromNormalAndCoplanarPoint(camera.getWorldDirection(new THREE.Vector3()).negate(), objHBr_H.position);
+            document.body.style.cursor = 'grabbing';
+        }
+    });
+
+    window.addEventListener('pointermove', (event) => {
+        if (!isDragging) return;
+        mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+        mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+        raycaster.setFromCamera(mouse, camera);
+        
+        const intersectPoint = new THREE.Vector3();
+        raycaster.ray.intersectPlane(dragPlane, intersectPoint);
+        if (intersectPoint) {
+            objHBr_H.position.copy(intersectPoint);
+        }
+    });
+
+    window.addEventListener('pointerup', () => {
+        if (!isDragging) return;
+        isDragging = false;
+        controls.enabled = true;
+        document.body.style.cursor = 'default';
+
+        if (objHBr_H.position.distanceTo(atomMeshes['C2'].position) < 1.5) {
+            triggerRingOpening();
+        } else {
+            // 如果未触碰到目标，回位防乱飞
+            objHBr_H.position.set(2.0, 3, 2);
+        }
+    });
+
+    // --- 6. 核心反应动画逻辑 ---
+
+    const animationTargets = [];
+    function addAnimTarget(obj, targetPos, speed = 0.05) {
+        animationTargets.push({ obj, targetPos, speed });
+    }
+
+    let chargeSprite1, chargeSprite4;
+
+    function triggerRingOpening() {
+        state = 3;
+        instruction.style.display = 'none';
+        
+        scene.remove(bondMeshes['C1-C2']);
+        bondsData = bondsData.filter(b => !(b[0]==='C1' && b[1]==='C2'));
+
+        let newHPos = atomMeshes['C2'].position.clone().add(new THREE.Vector3(0.5, 0.5, -0.5));
+        addAnimTarget(objHBr_H, newHPos, 0.1);
+        if(objHBr_H.children[0]) objHBr_H.children[0].visible = false; 
+        
+        bondsData.push(['C2', 'H_new']);
+        atomsData['H_new'] = { pos: newHPos, type: 'H' };
+        atomMeshes['H_new'] = objHBr_H; 
+
+        let dirAway = atomMeshes['C2'].position.clone().sub(atomMeshes['C1'].position).normalize().multiplyScalar(0.8);
+        let targetC2Pos = atomMeshes['C2'].position.clone().add(dirAway);
+        
+        addAnimTarget(atomMeshes['C2'], targetC2Pos);
+        addAnimTarget(atomMeshes['H_C2_1'], atomMeshes['H_C2_1'].position.clone().add(dirAway));
+        addAnimTarget(atomMeshes['H_C2_2'], atomMeshes['H_C2_2'].position.clone().add(dirAway));
+
+        chargeSprite1 = makeTextSprite("+", "#d32f2f");
+        chargeSprite1.position.set(0, 0.6, 0);
+        atomMeshes['C1'].add(chargeSprite1);
+
+        setSafeTimeout(() => {
+            generateOrbitals();
+            createBond('C2', 'H_new');
+            btnRearrange.disabled = false;
+        }, 1000);
+    }
+
+    btnRearrange.addEventListener('click', () => {
+        state = 4;
+        btnRearrange.disabled = true;
+
+        let shiftH = atomMeshes['H_C4'];
+        let targetHPos = atomMeshes['C1'].position.clone().add(new THREE.Vector3(1, 0.5, 0.5));
+        addAnimTarget(shiftH, targetHPos, 0.03);
+
+        bondsData = bondsData.filter(b => !(b[0]==='C4' && b[1]==='H_C4'));
+        bondsData.push(['C1', 'H_C4']);
+
+        if(chargeSprite1) chargeSprite1.visible = false;
+        chargeSprite4 = makeTextSprite("+", "#d32f2f");
+        chargeSprite4.position.set(0, 0.6, 0);
+        atomMeshes['C4'].add(chargeSprite4);
+
+        btnClouds.innerHTML = "重新点击: 展示超共轭效应 (电子云倾斜)";
+        btnClouds.style.backgroundColor = "#ff5722";
+
+        setSafeTimeout(() => {
+            if(bondMeshes['C4-H_C4']) {
+                scene.remove(bondMeshes['C4-H_C4']);
+                delete bondMeshes['C4-H_C4'];
+            }
+            createBond('C1', 'H_C4'); 
+            generateOrbitals(); 
+        }, 1500);
+    });
+
+    // --- ★ 7. 上一步 (撤销) 逻辑实现 ---
+    btnUndo.addEventListener('click', () => {
+        clearAllTimeouts();
+        animationTargets.length = 0; // 停止当前所有动画
+
+        if (state === 1) {
+            scene.remove(objHBr_H);
+            scene.remove(objHBr_Br);
+            scene.remove(bondHBr);
+            objHBr_H = null; objHBr_Br = null; bondHBr = null;
+            
+            state = 0;
+            btnHBr.disabled = false;
+            btnCleave.disabled = true;
+        } 
+        else if (state === 2) {
+            objHBr_H.position.set(2.5, 3, 2);
+            objHBr_Br.position.set(3.5, 3, 2);
+            
+            while(objHBr_H.children.length > 0) objHBr_H.remove(objHBr_H.children[0]);
+            while(objHBr_Br.children.length > 0) objHBr_Br.remove(objHBr_Br.children[0]);
+            
+            scene.add(bondHBr);
+            
+            state = 1;
+            btnCleave.disabled = false;
+            instruction.style.display = 'none';
+        }
+        else if (state === 3) {
+            objHBr_H.position.set(2.0, 3, 2);
+            if (objHBr_H.children.length > 0) {
+                objHBr_H.children[0].visible = true;
+            } else {
+                let plusSprite = makeTextSprite("+", "#d32f2f");
+                plusSprite.position.set(0, 0.4, 0);
+                objHBr_H.add(plusSprite);
+            }
+            
+            atomMeshes['C2'].position.copy(atomsData['C2'].origPos);
+            atomMeshes['H_C2_1'].position.copy(atomsData['H_C2_1'].origPos);
+            atomMeshes['H_C2_2'].position.copy(atomsData['H_C2_2'].origPos);
+
+            bondsData = bondsData.filter(b => !(b[0]==='C2' && b[1]==='H_new'));
+            bondsData.push(['C1', 'C2']);
+            delete atomsData['H_new'];
+            delete atomMeshes['H_new'];
+            
+            if (bondMeshes['C2-H_new']) {
+                scene.remove(bondMeshes['C2-H_new']);
+                delete bondMeshes['C2-H_new'];
+            }
+            if (bondMeshes['C1-C2']) {
+                scene.remove(bondMeshes['C1-C2']);
+                delete bondMeshes['C1-C2'];
+            }
+            createBond('C1', 'C2');
+
+            if (chargeSprite1) {
+                atomMeshes['C1'].remove(chargeSprite1);
+                chargeSprite1 = null;
+            }
+
+            state = 2;
+            instruction.style.display = 'block';
+            btnRearrange.disabled = true;
+            generateOrbitals();
+            forceUpdateBonds();
+        }
+        else if (state === 4) {
+            atomMeshes['H_C4'].position.copy(atomsData['H_C4'].origPos);
+
+            bondsData = bondsData.filter(b => !(b[0]==='C1' && b[1]==='H_C4'));
+            let hasBond = bondsData.find(b => b[0]==='C4' && b[1]==='H_C4');
+            if (!hasBond) bondsData.push(['C4', 'H_C4']);
+
+            if (bondMeshes['C1-H_C4']) {
+                scene.remove(bondMeshes['C1-H_C4']);
+                delete bondMeshes['C1-H_C4'];
+            }
+            if (bondMeshes['C4-H_C4']) {
+                scene.remove(bondMeshes['C4-H_C4']);
+                delete bondMeshes['C4-H_C4'];
+            }
+            createBond('C4', 'H_C4');
+
+            if (chargeSprite4) {
+                atomMeshes['C4'].remove(chargeSprite4);
+                chargeSprite4 = null;
+            }
+            if (chargeSprite1) {
+                chargeSprite1.visible = true;
+            } else {
+                chargeSprite1 = makeTextSprite("+", "#d32f2f");
+                chargeSprite1.position.set(0, 0.6, 0);
+                atomMeshes['C1'].add(chargeSprite1);
+            }
+
+            hyperconjugationActive = false;
+            btnClouds.innerHTML = cloudsVisible ? "1. 隐藏 sp³ 电子云" : "1. 开启 sp³ 电子云";
+            btnClouds.style.backgroundColor = "#007bff";
+
+            state = 3;
+            btnRearrange.disabled = false;
+            generateOrbitals();
+            forceUpdateBonds();
+        }
+
+        btnUndo.disabled = (state === 0);
+    });
+
+    // --- 8. 轨道控制与超共轭动画 ---
+    btnClouds.addEventListener('click', () => {
+        if (state < 4) {
+            cloudsVisible = !cloudsVisible;
+            orbitalGroup.visible = cloudsVisible;
+            btnClouds.innerText = cloudsVisible ? "1. 隐藏 sp³ 电子云" : "1. 开启 sp³ 电子云";
+        } else {
+            cloudsVisible = true;
+            orbitalGroup.visible = true;
+            hyperconjugationActive = !hyperconjugationActive;
+            
+            btnClouds.innerText = hyperconjugationActive ? "停止倾斜 (恢复原位)" : "展示超共轭效应 (电子云倾斜)";
+            btnClouds.style.backgroundColor = hyperconjugationActive ? "#4caf50" : "#ff5722";
+            
+            triggerHyperconjugationTilt();
+        }
+    });
+
+    function triggerHyperconjugationTilt() {
+        orbitalMeshes.forEach(lobe => {
+            if ((lobe.userData.parentC === 'C5' || lobe.userData.parentC === 'C6') && lobe.userData.target.startsWith('H')) {
+                lobe.userData.isTilting = hyperconjugationActive;
+                
+                if (hyperconjugationActive) {
+                    let currentDir = new THREE.Vector3(0,0,1).applyQuaternion(lobe.userData.origQuat);
+                    let dirToC4 = atomMeshes['C4'].position.clone().sub(lobe.position).normalize();
+                    let targetDir = currentDir.clone().lerp(dirToC4, 0.35).normalize();
+                    let targetQuat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,0,1), targetDir);
+                    lobe.userData.targetQuat = targetQuat;
+                }
+            }
+        });
+    }
+
+    // --- UI 杂项控制 ---
+    cbNumbers.addEventListener('change', (e) => {
+        for (let key in atomsData) {
+            if (atomsData[key].sprite) atomsData[key].sprite.visible = e.target.checked;
+        }
+    });
+
+    cbHydrogens.addEventListener('change', (e) => {
+        let show = e.target.checked;
+        for (let key in atomsData) {
+            if (atomsData[key].type === 'H') {
+                if(atomMeshes[key]) atomMeshes[key].visible = show;
+                for (let bKey in bondMeshes) {
+                    if (bKey.includes(key)) bondMeshes[bKey].visible = show;
+                }
+            }
+        }
+    });
+
+    // --- 9. 渲染与动画循环 ---
+    function animate() {
+        requestAnimationFrame(animate);
+        controls.update();
+
+        for (let i = animationTargets.length - 1; i >= 0; i--) {
+            let anim = animationTargets[i];
+            anim.obj.position.lerp(anim.targetPos, anim.speed);
+            
+            if (anim.obj.position.distanceTo(anim.targetPos) < 0.01) {
+                animationTargets.splice(i, 1); 
+                generateOrbitals(); 
+            } else {
+                for(let bKey in bondMeshes) {
+                    let parts = bKey.split('-');
+                    if(atomMeshes[parts[0]] === anim.obj || atomMeshes[parts[1]] === anim.obj) {
+                        let p1 = atomMeshes[parts[0]].position;
+                        let p2 = atomMeshes[parts[1]].position;
+                        let dist = p1.distanceTo(p2);
+                        let mesh = bondMeshes[bKey];
+                        if(mesh) {
+                            mesh.position.copy(p1);
+                            mesh.lookAt(p2);
+                            mesh.scale.z = dist / mesh.geometry.parameters.height; 
+                        }
+                    }
+                }
+            }
+        }
+
+        orbitalMeshes.forEach(lobe => {
+            if (lobe.userData.isTilting && lobe.userData.targetQuat) {
+                lobe.quaternion.slerp(lobe.userData.targetQuat, 0.05);
+            } else if (!lobe.userData.isTilting && lobe.userData.origQuat) {
+                lobe.quaternion.slerp(lobe.userData.origQuat, 0.05);
+            }
+        });
+
+        renderer.render(scene, camera);
+    }
+
+    window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    animate();
+</script>
+</body>
+</html>

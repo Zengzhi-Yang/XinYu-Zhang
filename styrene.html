@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>有机物共线共面 - 苯乙烯 3D 模型</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: #fcfcfc; /* 极浅的灰白色背景 */
+        }
+
+        /* 左侧控制面板样式 */
+        #control-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            width: 250px;
+            background: rgba(255, 255, 255, 0.96);
+            border-radius: 12px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+            padding: 20px;
+            z-index: 10;
+        }
+
+        .panel-header {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: #111;
+        }
+
+        .section-title {
+            font-size: 13px;
+            color: #888;
+            margin-bottom: 12px;
+            margin-top: 15px;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            color: #444;
+            font-size: 14px;
+        }
+
+        .info-value {
+            font-weight: bold;
+            color: #000;
+        }
+
+        .divider {
+            height: 1px;
+            background-color: #eee;
+            margin: 15px 0;
+        }
+
+        .control-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 14px;
+            font-size: 14px;
+            color: #333;
+        }
+
+        /* 滑块样式 */
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 120px;
+            background: transparent;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 14px; width: 14px;
+            border-radius: 50%;
+            background: #2196F3;
+            cursor: pointer;
+            margin-top: -5px;
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%; height: 4px;
+            cursor: pointer;
+            background: #ddd;
+            border-radius: 2px;
+        }
+
+        /* 切换开关样式 */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 36px;
+            height: 20px;
+        }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #d1d1d1;
+            transition: .3s;
+            border-radius: 20px;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 16px; width: 16px;
+            left: 2px; bottom: 2px;
+            background-color: white;
+            transition: .3s;
+            border-radius: 50%;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+        }
+        input:checked + .slider { background-color: #4db8ff; }
+        input:checked + .slider:before { transform: translateX(16px); }
+
+        /* 颜色选择器 */
+        .color-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        input[type="color"] {
+            border: 1px solid #ddd; border-radius: 4px;
+            width: 30px; height: 20px; padding: 0; cursor: pointer;
+        }
+
+        /* 原子编号 3D 标签样式 (黄底红字，精确还原截图) */
+        .atom-label {
+            background-color: #ffeb3b; 
+            color: #d32f2f; 
+            font-weight: bold;
+            padding: 2px 6px;
+            border-radius: 4px;
+            border: 1px solid #d4c42f;
+            font-size: 13px;
+            user-select: none;
+            pointer-events: none; /* 关键：防止遮挡鼠标射线的检测 */
+            box-shadow: 1px 1px 3px rgba(0,0,0,0.2);
+            margin-top: -15px;
+            /* 移除了 display: none，交由 JS 控制 visible 以解决失效 Bug */
+        }
+
+        #canvas-container {
+            width: 100vw; height: 100vh;
+            position: absolute; top: 0; left: 0;
+        }
+        #controls-hint { position: absolute; bottom: 20px; left: 20px; color: #555; background: rgba(255,255,255,0.8); padding: 10px; border-radius: 8px; font-size: 13px; }
+    </style>
+    
+    <!-- 引入 Three.js 和辅助渲染控制器 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://unpkg.com/three@0.132.2/examples/js/renderers/CSS2DRenderer.js"></script>
+</head>
+<body>
+
+    <!-- 左侧控制面板 -->
+    <div id="control-panel">
+        <div class="panel-header">有机物共线共面</div>
+        <div style="font-weight: bold; font-size: 16px; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 10px;">苯乙烯</div>
+        
+        <div class="section-title">旋转</div>
+        <div class="control-row">
+            <span>角度</span>
+            <input type="range" id="rotation-slider" min="0" max="360" value="0">
+        </div>
+        <div class="info-row">
+            <span>当前旋转角</span>
+            <span class="info-value" id="rotation-val">0°</span>
+        </div>
+
+        <div class="divider"></div>
+        <div class="info-row">
+            <span>共面原子</span>
+            <span class="info-value" id="coplanar-atoms">16</span>
+        </div>
+        <div class="info-row">
+            <span>共面碳原子</span>
+            <span class="info-value" id="coplanar-carbons">8</span>
+        </div>
+
+        <div class="divider"></div>
+        <div class="section-title">显示</div>
+
+        <div class="control-row">
+            <span>🔵 自动旋转</span>
+            <label class="switch">
+                <input type="checkbox" id="toggle-autorotate">
+                <span class="slider"></span>
+            </label>
+        </div>
+
+        <div class="control-row">
+            <span>🔵 平面</span>
+            <label class="switch">
+                <input type="checkbox" id="toggle-plane">
+                <span class="slider"></span>
+            </label>
+        </div>
+
+        <div class="control-row">
+            <span>🔵 编号</span>
+            <label class="switch">
+                <input type="checkbox" id="toggle-labels" checked>
+                <span class="slider"></span>
+            </label>
+        </div>
+
+        <div class="control-row">
+            <span>🔵 原子色</span>
+            <div class="color-control">
+                <!-- 预设色板为原图上的金黄色 -->
+                <input type="color" id="color-picker" value="#f2c438">
+                <label class="switch">
+                    <input type="checkbox" id="toggle-color-mode">
+                    <span class="slider"></span>
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3D 渲染画布 -->
+    <div id="canvas-container"></div>
+
+    <div id="controls-hint">操作提示：左键拖动旋转视角 | 按住ctrl+左键平移位置 | 滚轮缩放大小</div>
+
+    <script>
+        // --- 1. 初始化场景、相机、渲染器 ---
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+
+        const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(3, 2, 48);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        container.appendChild(renderer.domElement);
+
+        const labelRenderer = new THREE.CSS2DRenderer();
+        labelRenderer.setSize(window.innerWidth, window.innerHeight);
+        labelRenderer.domElement.style.position = 'absolute';
+        labelRenderer.domElement.style.top = '0px';
+        labelRenderer.domElement.style.pointerEvents = 'none';
+        container.appendChild(labelRenderer.domElement);
+
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.9);
+        dirLight.position.set(5, 10, 15);
+        scene.add(dirLight);
+
+        // --- 2. 颜色与材质配置 ---
+        const COLOR_C_BENZENE = 0x111111; // 苯环主碳原子 (黑)
+        const COLOR_C_VINYL = 0xe6a817;   // 连接处C6 及 乙烯基碳原子 (金黄)
+        const COLOR_H = 0xd5d9dc;         // 氢原子 (灰白)
+
+        let clickableAtoms = [];
+        let allLabels =[]; // 专门存储 3D 标签对象，用于精确控制显隐
+
+        function createAtom(pos, radius, colorHex, labelStr) {
+            const geo = new THREE.SphereGeometry(radius, 32, 32);
+            const mat = new THREE.MeshStandardMaterial({ color: colorHex, roughness: 0.2, metalness: 0.15 });
+            const mesh = new THREE.Mesh(geo, mat);
+            mesh.position.copy(pos);
+
+            // 创建编号标签
+            const div = document.createElement('div');
+            div.className = 'atom-label';
+            div.textContent = labelStr;
+            const label = new THREE.CSS2DObject(div);
+            label.position.set(0, radius + 0.3, 0);
+            mesh.add(label);
+
+            allLabels.push(label);
+            clickableAtoms.push(mesh);
+            return mesh;
+        }
+
+        // 创建化学键 (单键和双键)
+        function createBond(start, end, parentGroup, bondType = 1) {
+            const dist = start.distanceTo(end);
+            const mat = new THREE.MeshStandardMaterial({ color: 0x999999, roughness: 0.3 });
+            const dir = new THREE.Vector3().subVectors(end, start).normalize();
+            const mid = new THREE.Vector3().addVectors(start, end).multiplyScalar(0.5);
+
+            if (bondType === 1) {
+                const cyl = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, dist, 16), mat);
+                cyl.position.copy(mid);
+                cyl.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+                parentGroup.add(cyl);
+            } else if (bondType === 2) {
+                const up = new THREE.Vector3(0, 0, 1);
+                const shift = new THREE.Vector3().crossVectors(dir, up).normalize().multiplyScalar(0.35);
+                [-1, 1].forEach(sign => {
+                    const cyl = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, dist, 16), mat);
+                    cyl.position.copy(mid).add(shift.clone().multiplyScalar(sign));
+                    cyl.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+                    parentGroup.add(cyl);
+                });
+            }
+        }
+
+        // --- 3. 核心几何建构：苯乙烯 ---
+        const moleculeGroup = new THREE.Group();
+        scene.add(moleculeGroup);
+
+        const L_CC_AR = 4.2;  // 苯环 C-C 键长
+        const L_CC_SG = 4.6;  // 苯环与乙烯基 C-C 单键长
+        const L_CC_DB = 4.0;  // 乙烯基 C=C 双键长
+        const L_CH = 3.2;     // C-H 键长
+
+        // --- 3.1 构建苯环 (平面 Z=0) ---
+        // 精确匹配截图位置：C6 在正上方，逆时针标号 C1, C2, C3, C4, C5
+        const angles =[150, 210, 270, 330, 30, 90]; 
+        const posC =[];
+        
+        for (let i = 0; i < 6; i++) {
+            let rad = angles[i] * Math.PI / 180;
+            posC.push(new THREE.Vector3(L_CC_AR * Math.cos(rad), L_CC_AR * Math.sin(rad), 0));
+            // 根据您的截图，C6 是与乙烯基相连的碳，颜色为金黄，其他为黑
+            let color = (i === 5) ? COLOR_C_VINYL : COLOR_C_BENZENE; 
+            moleculeGroup.add(createAtom(posC[i], 1.25, color, 'C' + (i+1)));
+        }
+
+        // 苯环化学键 (精确还原截图的单双键交替模式)
+        createBond(posC[5], posC[4], moleculeGroup, 2); // C6=C5
+        createBond(posC[4], posC[3], moleculeGroup, 1); // C5-C4
+        createBond(posC[3], posC[2], moleculeGroup, 2); // C4=C3
+        createBond(posC[2], posC[1], moleculeGroup, 1); // C3-C2
+        createBond(posC[1], posC[0], moleculeGroup, 2); // C2=C1
+        createBond(posC[0], posC[5], moleculeGroup, 1); // C1-C6
+
+        // 苯环上的氢 (H1 ~ H5)
+        for (let i = 0; i < 5; i++) {
+            let rad = angles[i] * Math.PI / 180;
+            let hPos = new THREE.Vector3((L_CC_AR + L_CH) * Math.cos(rad), (L_CC_AR + L_CH) * Math.sin(rad), 0);
+            moleculeGroup.add(createAtom(hPos, 0.8, COLOR_H, 'H' + (i+1)));
+            createBond(posC[i], hPos, moleculeGroup, 1);
+        }
+
+        // --- 3.2 构建乙烯基 (挂载在 C6 以便做无极旋转) ---
+        const vinylGroup = new THREE.Group();
+        vinylGroup.position.copy(posC[5]); // 将基团原点放在 C6 处
+        moleculeGroup.add(vinylGroup);
+
+        // C7 相对 C6 竖直向上
+        const posC7_rel = new THREE.Vector3(0, L_CC_SG, 0); 
+        vinylGroup.add(createAtom(posC7_rel, 1.25, COLOR_C_VINYL, 'C7'));
+        createBond(posC[5], posC[5].clone().add(posC7_rel), moleculeGroup, 1); // C6-C7 单键
+
+        // C8 相对于 C7 向左上方 (键角120度)
+        const rad150 = 150 * Math.PI / 180;
+        const posC8_rel = posC7_rel.clone().add(new THREE.Vector3(L_CC_DB * Math.cos(rad150), L_CC_DB * Math.sin(rad150), 0));
+        vinylGroup.add(createAtom(posC8_rel, 1.25, COLOR_C_VINYL, 'C8'));
+        createBond(posC7_rel, posC8_rel, vinylGroup, 2); // C7=C8 双键
+
+        // H6 (挂在 C7 上)，向右上方 (键角120度)
+        const rad30 = 30 * Math.PI / 180;
+        const posH6_rel = posC7_rel.clone().add(new THREE.Vector3(L_CH * Math.cos(rad30), L_CH * Math.sin(rad30), 0));
+        vinylGroup.add(createAtom(posH6_rel, 0.8, COLOR_H, 'H6'));
+        createBond(posC7_rel, posH6_rel, vinylGroup, 1);
+
+        // H7, H8 (挂在 C8 上)
+        const rad90 = 90 * Math.PI / 180; // H7 正上
+        const posH7_rel = posC8_rel.clone().add(new THREE.Vector3(L_CH * Math.cos(rad90), L_CH * Math.sin(rad90), 0));
+        vinylGroup.add(createAtom(posH7_rel, 0.8, COLOR_H, 'H7'));
+        createBond(posC8_rel, posH7_rel, vinylGroup, 1);
+
+        const rad210 = 210 * Math.PI / 180; // H8 左下
+        const posH8_rel = posC8_rel.clone().add(new THREE.Vector3(L_CH * Math.cos(rad210), L_CH * Math.sin(rad210), 0));
+        vinylGroup.add(createAtom(posH8_rel, 0.8, COLOR_H, 'H8'));
+        createBond(posC8_rel, posH8_rel, vinylGroup, 1);
+
+        // --- 4. 共面参考平面 ---
+        const planeGeo = new THREE.PlaneGeometry(40, 40);
+        const planeMat = new THREE.MeshBasicMaterial({ color: 0x87ceeb, transparent: true, opacity: 0.35, side: THREE.DoubleSide });
+        const planeMesh = new THREE.Mesh(planeGeo, planeMat);
+        planeMesh.visible = false; // 初始隐藏
+        moleculeGroup.add(planeMesh);
+
+        // 整体稍微倾斜分子，呈现立体感
+        moleculeGroup.rotation.set(0.2, -0.4, 0);
+
+        // --- 5. UI 事件交互与物理逻辑 ---
+        
+        // 核心修复点：使用该函数集中、安全地控制标签的显示和隐藏
+        function updateLabelsVisibility() {
+            const isVisible = document.getElementById('toggle-labels').checked;
+            allLabels.forEach(label => {
+                label.visible = isVisible; // 直接修改 Three.js 原生属性，拒绝闪烁与失灵
+            });
+        }
+        // 初始化调用一次
+        updateLabelsVisibility();
+        // 绑定事件
+        document.getElementById('toggle-labels').addEventListener('change', updateLabelsVisibility);
+
+
+        const sliderRot = document.getElementById('rotation-slider');
+        const valRot = document.getElementById('rotation-val');
+        const textAtoms = document.getElementById('coplanar-atoms');
+        const textCarbons = document.getElementById('coplanar-carbons');
+
+        sliderRot.addEventListener('input', (e) => {
+            const angleDeg = parseInt(e.target.value);
+            valRot.innerText = angleDeg + '°';
+            
+            // 执行绕 C6-C7 键 (Y轴) 的旋转
+            vinylGroup.rotation.y = THREE.MathUtils.degToRad(angleDeg);
+            
+            // 物理规律：当旋转角度为 0° 或 180° 时(容差±5°)，乙烯基与苯环共面，总计16原子共面。
+            // 发生偏转时，共面的只有苯环 + 连结的C7，总计 12 个原子。
+            const remainder = angleDeg % 180;
+            if (remainder <= 5 || remainder >= 175) {
+                textAtoms.innerText = "16";
+                textAtoms.style.color = "#000";
+                textCarbons.innerText = "8";
+                textCarbons.style.color = "#000";
+            } else {
+                textAtoms.innerText = "12"; 
+                textAtoms.style.color = "#888";
+                textCarbons.innerText = "7";
+                textCarbons.style.color = "#888";
+            }
+        });
+
+        // 自动旋转
+        document.getElementById('toggle-autorotate').addEventListener('change', (e) => {
+            controls.autoRotate = e.target.checked;
+        });
+
+        // 平面展示控制
+        document.getElementById('toggle-plane').addEventListener('change', (e) => {
+            planeMesh.visible = e.target.checked;
+        });
+
+        // --- 6. 射线拾取：原子自由染色 ---
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+        const colorPicker = document.getElementById('color-picker');
+        const toggleColorMode = document.getElementById('toggle-color-mode');
+
+        window.addEventListener('pointerdown', (event) => {
+            if (!toggleColorMode.checked) return;
+            // 避开左侧 UI 面板区域，防止误触
+            if (event.clientX < 280 && event.clientY < 600) return;
+
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+            
+            const intersects = raycaster.intersectObjects(clickableAtoms);
+            if (intersects.length > 0) {
+                intersects[0].object.material.color.set(colorPicker.value);
+            }
+        });
+
+        // --- 7. 渲染动画循环 ---
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+            labelRenderer.render(scene, camera); 
+        }
+        animate();
+
+        // 窗口响应
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            labelRenderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
