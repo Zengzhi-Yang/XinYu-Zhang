@@ -70,12 +70,18 @@
             bottom: 20px;
             width: 480px;
             max-width: calc(100vw - 40px);
+            min-width: 380px;
+            min-height: 320px;
             background: rgba(255, 255, 255, 0.94);
-            padding: 14px 16px 12px;
+            padding: 42px 16px 12px;
             border-radius: 12px;
             box-shadow: 0 8px 32px rgba(0,0,0,0.16);
             border: 1px solid rgba(0,0,0,0.06);
             pointer-events: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            overflow: hidden;
         }
         .energy-header {
             display: flex;
@@ -96,7 +102,44 @@
         #energy-chart {
             width: 100%;
             height: 230px;
+            flex: 1 1 auto;
+            min-height: 230px;
             display: block;
+        }
+
+        .energy-resize-handle {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 3;
+            width: 22px;
+            height: 22px;
+            padding: 0;
+            margin: 0;
+            min-height: 22px;
+            border: 1px solid rgba(38, 50, 56, 0.16);
+            border-radius: 6px;
+            background:
+                radial-gradient(circle at 35% 35%, rgba(38, 50, 56, 0.52) 0 1.6px, transparent 1.7px),
+                radial-gradient(circle at 65% 35%, rgba(38, 50, 56, 0.52) 0 1.6px, transparent 1.7px),
+                radial-gradient(circle at 35% 65%, rgba(38, 50, 56, 0.52) 0 1.6px, transparent 1.7px),
+                radial-gradient(circle at 65% 65%, rgba(38, 50, 56, 0.52) 0 1.6px, transparent 1.7px),
+                rgba(255, 255, 255, 0.8);
+            cursor: grab;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+            transform: none;
+            font-size: 0;
+            line-height: 0;
+        }
+
+        .energy-resize-handle:hover {
+            background:
+                radial-gradient(circle at 35% 35%, rgba(21, 101, 192, 0.72) 0 1.6px, transparent 1.7px),
+                radial-gradient(circle at 65% 35%, rgba(21, 101, 192, 0.72) 0 1.6px, transparent 1.7px),
+                radial-gradient(circle at 35% 65%, rgba(21, 101, 192, 0.72) 0 1.6px, transparent 1.7px),
+                radial-gradient(circle at 65% 65%, rgba(21, 101, 192, 0.72) 0 1.6px, transparent 1.7px),
+                rgba(255, 255, 255, 0.94);
+            transform: none;
         }
         #energy-caption {
             margin-top: 8px;
@@ -241,6 +284,7 @@
             <span>反应能量图</span>
             <span id="energy-stage-tag">反应物</span>
         </div>
+        <button id="energyResizeHandle" class="energy-resize-handle" type="button" title="拖动移动能量图" aria-label="拖动移动能量图"></button>
         <svg id="energy-chart" viewBox="0 0 460 230" role="img" aria-label="反应能量变化示意图">
             <line class="energy-axis" x1="42" y1="170" x2="332" y2="170"></line>
             <line class="energy-axis" x1="42" y1="170" x2="42" y2="24"></line>
@@ -305,6 +349,54 @@
     const energyStageLabel = document.getElementById('energy-stage-label');
     const energyStageTag = document.getElementById('energy-stage-tag');
     const energyCaption = document.getElementById('energy-caption');
+    const energyPanel = document.getElementById('energy-panel');
+    const energyResizeHandle = document.getElementById('energyResizeHandle');
+
+    if (energyPanel && energyResizeHandle) {
+        let dragging = false;
+        let startX = 0;
+        let startY = 0;
+        let startLeft = 0;
+        let startTop = 0;
+
+        const stopDrag = () => {
+            dragging = false;
+            document.body.style.userSelect = '';
+            energyResizeHandle.style.cursor = 'grab';
+        };
+
+        energyResizeHandle.addEventListener('pointerdown', (event) => {
+            if (event.button !== 0) return;
+            const rect = energyPanel.getBoundingClientRect();
+            dragging = true;
+            startX = event.clientX;
+            startY = event.clientY;
+            startLeft = rect.left;
+            startTop = rect.top;
+            energyPanel.style.left = `${startLeft}px`;
+            energyPanel.style.top = `${startTop}px`;
+            energyPanel.style.right = 'auto';
+            energyPanel.style.bottom = 'auto';
+            document.body.style.userSelect = 'none';
+            energyResizeHandle.style.cursor = 'grabbing';
+            energyResizeHandle.setPointerCapture(event.pointerId);
+            event.preventDefault();
+        });
+
+        window.addEventListener('pointermove', (event) => {
+            if (!dragging) return;
+            const rect = energyPanel.getBoundingClientRect();
+            const maxLeft = Math.max(0, window.innerWidth - rect.width);
+            const maxTop = Math.max(0, window.innerHeight - rect.height);
+            const left = Math.max(0, Math.min(maxLeft, startLeft + (event.clientX - startX)));
+            const top = Math.max(0, Math.min(maxTop, startTop + (event.clientY - startY)));
+            energyPanel.style.left = `${left}px`;
+            energyPanel.style.top = `${top}px`;
+        });
+
+        window.addEventListener('pointerup', stopDrag);
+        window.addEventListener('pointercancel', stopDrag);
+    }
 
     const energyPhases = [
         {
