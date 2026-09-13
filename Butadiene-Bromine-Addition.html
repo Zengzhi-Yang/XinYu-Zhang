@@ -89,13 +89,27 @@
             bottom: 18px;
             width: 480px;
             min-width: 380px;
-            min-height: 320px;
-            padding: 42px 18px 14px;
+            min-height: 400px;
+            padding: 48px 20px 18px;
             border-radius: 12px;
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: 10px;
             overflow: hidden;
+        }
+
+        #energyTitle {
+            font-size: 24px;
+            line-height: 1.25;
+            margin-bottom: 2px;
+        }
+
+        #energySvg {
+            width: 100%;
+            display: block;
+            height: 300px;
+            flex: 1 1 auto;
+            min-height: 236px;
         }
 
         h2,
@@ -183,6 +197,13 @@
             margin: 10px 0 14px;
             color: var(--muted-text);
             font-size: 14px;
+        }
+
+        .range-hint {
+            margin-top: 5px;
+            color: var(--muted-text);
+            font-size: 12px;
+            line-height: 1.4;
         }
 
         .range-head {
@@ -355,7 +376,7 @@
 
         #energyReadout {
             color: var(--muted-text);
-            font-size: 13px;
+            font-size: 16px;
             line-height: 1.45;
         }
 
@@ -386,19 +407,30 @@
             pointer-events: none;
         }
 
+        #centerHint:empty {
+            display: none;
+        }
+
         .legend {
             display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            font-size: 12px;
+            flex-direction: column;
+            gap: 6px;
+            font-size: 14px;
             color: var(--muted-text);
             margin-top: 8px;
         }
 
+        .legend-row {
+            display: flex;
+            gap: 12px;
+            flex-wrap: nowrap;
+            align-items: center;
+        }
+
         .dot {
             display: inline-block;
-            width: 10px;
-            height: 10px;
+            width: 12px;
+            height: 12px;
             border-radius: 50%;
             margin-right: 4px;
             vertical-align: middle;
@@ -449,6 +481,8 @@
                 height: 176px;
             }
 
+            #energySvg { height: 190px; min-height: 190px; }
+
             .button-grid {
                 grid-template-columns: 1fr;
             }
@@ -465,6 +499,31 @@
                 overflow: hidden;
                 text-overflow: ellipsis;
             }
+        }
+        /* Desktop layout: keep the animation full-screen and float the energy graph at bottom-right. */
+        body { display: block; height: 100vh; }
+        #ui-panel { position: absolute; top: 18px; left: 18px; width: 374px; max-height: calc(100vh - 36px); padding: 18px; border-radius: 12px; box-shadow: 0 10px 28px var(--shadow); }
+        #canvas-container { position: absolute; inset: 0; width: 100%; height: 100%; overflow: hidden; }
+        #canvas-container > canvas { display: block; width: 100%; height: 100%; }
+        #energy-panel { position: absolute; right: 18px; bottom: 18px; width: 480px; height: min(500px, calc(100vh - 36px)); min-width: 380px; min-height: 320px; max-height: calc(100vh - 36px); padding: 42px 18px 14px; border-radius: 12px; box-shadow: 0 10px 28px var(--shadow); border: 0; display: flex; }
+        #energySvg { height: 300px; min-height: 236px; flex: 1 1 auto; }
+        button:disabled { opacity: 0.45; cursor: default; transform: none; }
+        #bottom-hint { display: block; }
+        body.energy-hidden #energy-panel { display: none; }
+        @media (max-width: 1380px) and (min-width: 1101px) {
+            #energy-panel { padding-left: 14px; padding-right: 14px; }
+        }
+        @media (max-width: 1100px) {
+            #energy-panel { left: auto; right: 12px; bottom: 12px; width: min(460px, calc(100vw - 300px)); min-width: 340px; }
+        }
+        @media (max-width: 650px) {
+            body, body.energy-hidden { display: flex; flex-direction: column; height: auto; overflow: auto; }
+            #ui-panel { width: 100%; max-height: 250px; flex: none; padding: 12px; }
+            #ui-panel h2 { padding-right: 85px; }
+            #canvas-container { height: 390px; flex: none; }
+            #energy-panel { width: 100%; height: 450px; flex: none; padding: 14px 10px; overflow: hidden; }
+            #energySvg { min-height: 200px; }
+            #home-link { position: absolute; top: 10px; right: 10px; min-height: 32px; padding: 5px 8px; font-size: 12px; }
         }
     </style>
     <script>
@@ -1550,6 +1609,7 @@
                 <span id="progressValue">0%</span>
             </div>
             <input id="progressSlider" type="range" min="0" max="100" value="0">
+            <div class="range-hint">提示：点击滑块后，可使用键盘 ← / → 调整反应进程</div>
         </div>
 
         <div class="toggle-list" aria-label="显示设置">
@@ -1564,7 +1624,7 @@
                 <span class="toggle-switch" aria-hidden="true"></span>
             </label>
             <label class="toggle-row">
-                <span>显示电子流箭头</span>
+                <span>显示电子点/电子对</span>
                 <input type="checkbox" id="cbElectronFlow" checked>
                 <span class="toggle-switch" aria-hidden="true"></span>
             </label>
@@ -1587,12 +1647,18 @@
     <div id="energy-panel">
         <h3 id="energyTitle">能量变化图</h3>
         <button id="energyResizeHandle" class="energy-resize-handle" type="button" title="拖动移动能量图" aria-label="拖动移动能量图"></button>
-        <svg id="energySvg" viewBox="0 0 460 230" role="img" aria-label="当前反应路径的能量变化图"></svg>
+        <svg id="energySvg" viewBox="0 0 460 230" role="img" aria-label="二维能量图：共同路径在65%分岔为A和B"></svg>
         <div id="energyReadout"></div>
         <div class="legend">
-            <span><i class="dot" style="background:#263238"></i>共同第一步</span>
-            <span><i class="dot" style="background:#1565c0"></i>A 路径</span>
-            <span><i class="dot" style="background:#d84315"></i>B 路径</span>
+            <div class="legend-row">
+                <span><i class="dot" style="background:#263238"></i>共同第一步</span>
+                <span><i class="dot" style="background:#1565c0"></i>A 路径</span>
+                <span><i class="dot" style="background:#d84315"></i>B 路径</span>
+            </div>
+            <div class="legend-row">
+                <span><i class="dot" style="background:#18a999"></i>碳骨架 π 电子</span>
+                <span><i class="dot" style="background:#7b3fb6"></i>溴来源电子</span>
+            </div>
         </div>
     </div>
 
@@ -1676,11 +1742,13 @@
         scene.background = new THREE.Color(0xeef2f4);
 
         const camera = new THREE.PerspectiveCamera(48, window.innerWidth / window.innerHeight, 0.1, 100);
-        camera.position.set(0, 4.2, 10.5);
+        camera.position.set(0, 3.5, 8.6);
 
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.setSize(container.clientWidth || window.innerWidth, container.clientHeight || window.innerHeight, false);
         container.appendChild(renderer.domElement);
 
         const controls = new THREE.OrbitControls(camera, renderer.domElement);
@@ -1690,13 +1758,21 @@
         scene.add(new THREE.AmbientLight(0xffffff, 0.72));
         const keyLight = new THREE.DirectionalLight(0xffffff, 0.95);
         keyLight.position.set(4, 7, 5);
+        keyLight.castShadow = true;
+        keyLight.shadow.mapSize.set(1024, 1024);
+        keyLight.shadow.camera.near = 0.5;
+        keyLight.shadow.camera.far = 30;
         scene.add(keyLight);
         const fillLight = new THREE.DirectionalLight(0xbfd8ff, 0.45);
         fillLight.position.set(-5, 2, -3);
         scene.add(fillLight);
+        const rimLight = new THREE.DirectionalLight(0xffe0c2, 0.32);
+        rimLight.position.set(1, 3, -6);
+        scene.add(rimLight);
 
         const floor = new THREE.GridHelper(9, 18, 0xc5cfd6, 0xdce3e8);
         floor.position.y = -1.25;
+        floor.receiveShadow = true;
         scene.add(floor);
 
         const colors = {
@@ -1705,7 +1781,9 @@
             Br: 0x8e2d1f,
             bond: 0x6f7d86,
             weak: 0x9aa8b1,
-            pi: 0x2e7d32
+            pi: 0x2e7d32,
+            carbonPi: 0x18a999,
+            brominePair: 0x7b3fb6
         };
 
         const materials = {
@@ -1727,13 +1805,15 @@
 
         const dynamicGroup = new THREE.Group();
         const labelGroup = new THREE.Group();
-        const arrowGroup = new THREE.Group();
-        scene.add(dynamicGroup, labelGroup, arrowGroup);
+        const electronGroup = new THREE.Group();
+        scene.add(dynamicGroup, labelGroup, electronGroup);
 
         atomData.forEach(([id, element]) => {
             const geom = new THREE.SphereGeometry(atomRadius[element], 32, 22);
             const mesh = new THREE.Mesh(geom, materials[element]);
             mesh.userData = { id, element };
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
             atoms.set(id, mesh);
             scene.add(mesh);
         });
@@ -1754,6 +1834,14 @@
             H4a: ["C4", new THREE.Vector3(0.5935850, -0.9240380, 0.0000000)],
             H4b: ["C4", new THREE.Vector3(0.5936144, 0.9240129, -0.0019588)]
         };
+
+        // 反应物 1,3-丁二烯采用严格共面构型；产物阶段仍使用 Gaussian 优化坐标。
+        const reactantHOffsets = Object.fromEntries(
+            Object.entries(hOffsets).map(([id, [cId, offset]]) => [
+                id,
+                [cId, new THREE.Vector3(offset.x, offset.y, 0)]
+            ])
+        );
 
         function computeOpenSite(center, attachedPositions, length, bias) {
             const sum = new THREE.Vector3();
@@ -1814,21 +1902,75 @@
                 baseC.C4,
                 [baseC.C3, hPositions.H4a, hPositions.H4b],
                 1.91,
-                new THREE.Vector3(-0.18, -0.28, -0.16)
+                // 让 C4→Br 的进攻方向避开 C3，形成钝角的四面体进攻几何。
+                new THREE.Vector3(2.0, 0.0, -0.20)
             ),
             br2C4Product: productB.br2.clone()
         };
+        const c12Direction = baseC.C2.clone().sub(baseC.C1).normalize();
+        const c12Perpendicular = new THREE.Vector3(-c12Direction.y, c12Direction.x, 0).normalize();
+        const brStartCenter = brPos.br1Start.clone().add(brPos.br2Start).multiplyScalar(0.5);
+        const brStartDirection = brPos.br2Start.clone().sub(brPos.br1Start).normalize();
+        const brStartLength = brPos.br1Start.distanceTo(brPos.br2Start);
+        const bromoniumCenter = baseC.C1.clone()
+            .lerp(baseC.C2, 0.5)
+            .add(c12Perpendicular.clone().multiplyScalar(1.0))
+            .add(new THREE.Vector3(0, 0, 0.42));
+        const c12Length = baseC.C1.distanceTo(baseC.C2);
+        const ringOpenDelta = baseC.C2.clone()
+            .sub(bromoniumCenter)
+            .normalize()
+            .multiplyScalar(0.72);
+        // Br2 approaches perpendicular to C1=C2 and visibly elongates before the bromonium ring closes.
+        const brApproachLength = 1.90;
+        if (c12Perpendicular.dot(brPos.br2Start.clone().sub(brPos.br1Start)) < 0) {
+            c12Perpendicular.negate();
+        }
+        const brApproachCenter = bromoniumCenter.clone().add(
+            c12Perpendicular.clone().multiplyScalar(brApproachLength * 0.5)
+        );
+        const brApproach = {
+            br1: brApproachCenter.clone().sub(c12Perpendicular.clone().multiplyScalar(brApproachLength * 0.5)),
+            br2: brApproachCenter.clone().add(c12Perpendicular.clone().multiplyScalar(brApproachLength * 0.5))
+        };
+        const moleculeFitPoints = [
+            ...Object.values(baseC),
+            ...Object.values(productB.atoms),
+            ...Object.values(brPos),
+            brStartCenter,
+            brApproachCenter,
+            bromoniumCenter
+        ];
+        const moleculeFitBox = new THREE.Box3().setFromPoints(moleculeFitPoints);
+        const moleculeFitCenter = moleculeFitBox.getCenter(new THREE.Vector3());
+        const moleculeFitRadius = moleculeFitBox.getBoundingSphere(new THREE.Sphere()).radius;
 
+        const BRANCH_PROGRESS = 0.65;
+        // Qualitative teaching nodes, not calculated energies or an IRC.
+        const commonEnergies = [
+            { p: 0, e: 20, label: "反应物" },
+            { p: 0.09, e: 44, label: "π电子分离" },
+            { p: 0.26, e: 60, label: "Br-Br离子化 TS" },
+            { p: 0.34, e: 42, label: "Br+三元环" },
+            { p: 0.45, e: 48, label: "开环TS（示意）" },
+            { p: BRANCH_PROGRESS, e: 24, label: "共同溴鎓离子中间体 · 65%" }
+        ];
         const pathConfig = {
+            common: { title: "二维能量图 · 共同路径与 A/B 分岔", markerColor: "#263238", product: "共同溴鎓离子中间体", energies: commonEnergies },
             path12: {
                 title: "路径一：1,2-加成生成 A",
                 product: "A = BrCH2-CHBr-CH=CH2",
                 markerColor: "#1565c0",
                 energies: [
                     { p: 0, e: 10, label: "反应物" },
-                    { p: 0.22, e: 58, label: "TS1" },
-                    { p: 0.46, e: 24, label: "烯丙基中间体" },
-                    { p: 0.66, e: 38, label: "TS-A" },
+                    { p: 0.20, e: 48, label: "Br-Br拉长" },
+                    { p: 0.22, e: 60, label: "TS1" },
+                    { p: 0.25, e: 42, label: "溴鎓离子" },
+                    { p: 0.33, e: 48, label: "开环/离域TS" },
+                    { p: 0.46, e: 24, label: "溴鎓离子中间体" },
+                    { p: 0.70, e: 32, label: "Br-接近/重排" },
+                    { p: 0.77, e: 42, label: "TS-A" },
+                    { p: 0.84, e: 20, label: "C-Br成键放热" },
                     { p: 1, e: 16, label: "A" }
                 ]
             },
@@ -1838,25 +1980,34 @@
                 markerColor: "#d84315",
                 energies: [
                     { p: 0, e: 10, label: "反应物" },
-                    { p: 0.22, e: 58, label: "TS1" },
-                    { p: 0.46, e: 24, label: "烯丙基中间体" },
-                    { p: 0.72, e: 48, label: "TS-B" },
+                    { p: 0.20, e: 48, label: "Br-Br拉长" },
+                    { p: 0.22, e: 60, label: "TS1" },
+                    { p: 0.25, e: 42, label: "溴鎓离子" },
+                    { p: 0.33, e: 48, label: "开环/离域TS" },
+                    { p: 0.46, e: 24, label: "溴鎓离子中间体" },
+                    { p: 0.76, e: 34, label: "Br-接近/重排" },
+                    { p: 0.80, e: 50, label: "TS-B" },
+                    { p: 0.90, e: 18, label: "C-Br成键放热" },
                     { p: 1, e: 2, label: "B" }
                 ]
             },
             convert: {
                 title: "路径三：A 常温慢转化为 B",
                 product: "A 重新离子化后转化为 B",
-                markerColor: "#2e7d32",
+                markerColor: "#0097c2",
                 energies: [
                     { p: 0, e: 16, label: "A" },
                     { p: 0.26, e: 42, label: "离子化 TS" },
-                    { p: 0.46, e: 24, label: "烯丙基中间体" },
+                    { p: 0.46, e: 24, label: "溴鎓离子中间体" },
                     { p: 0.72, e: 48, label: "TS-B" },
                     { p: 1, e: 2, label: "B" }
                 ]
             }
         };
+
+        ["path12", "path14"].forEach((route) => {
+            pathConfig[route].energies = [...commonEnergies, ...pathConfig[route].energies.filter((node) => node.p > BRANCH_PROGRESS)];
+        });
 
         let currentPath = "path12";
         let progress = 0;
@@ -1916,6 +2067,8 @@
             const mid = start.clone().add(end).multiplyScalar(0.5);
             mesh.position.copy(mid);
             mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction.normalize());
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
             return mesh;
         }
 
@@ -1942,28 +2095,30 @@
             }
         }
 
-        function makeTextSprite(text, color, bgColor) {
+        function makeTextSprite(text, color, bgColor, fontSize = 64) {
             const canvas = document.createElement("canvas");
             const ctx = canvas.getContext("2d");
-            ctx.font = "600 42px Microsoft YaHei, Segoe UI, sans-serif";
+            const font = `600 ${fontSize}px Microsoft YaHei, Segoe UI, sans-serif`;
+            ctx.font = font;
             const metrics = ctx.measureText(text);
-            const width = Math.ceil(metrics.width + 36);
+            const width = Math.ceil(metrics.width + fontSize * 0.86);
             canvas.width = Math.max(96, width);
-            canvas.height = 66;
-            ctx.font = "600 42px Microsoft YaHei, Segoe UI, sans-serif";
+            canvas.height = Math.ceil(fontSize * 1.58);
+            ctx.font = font;
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
             ctx.fillStyle = bgColor;
-            roundRect(ctx, 2, 2, canvas.width - 4, canvas.height - 4, 16);
+            roundRect(ctx, 2, 2, canvas.width - 4, canvas.height - 4, fontSize * 0.38);
             ctx.fill();
             ctx.strokeStyle = "rgba(38,50,56,0.2)";
-            ctx.lineWidth = 3;
+            ctx.lineWidth = Math.max(2, fontSize * 0.07);
             ctx.stroke();
             ctx.fillStyle = color;
             ctx.fillText(text, canvas.width / 2, canvas.height / 2 + 1);
             const texture = new THREE.CanvasTexture(canvas);
             const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, transparent: true }));
-            sprite.scale.set(canvas.width / 125, canvas.height / 125, 1);
+            const scaleCorrection = 42 / fontSize;
+            sprite.scale.set(canvas.width / 125 * scaleCorrection, canvas.height / 125 * scaleCorrection, 1);
             return sprite;
         }
 
@@ -1981,39 +2136,88 @@
             ctx.closePath();
         }
 
-        function addLabel(text, position, color = "#263238", bg = "rgba(255,255,255,0.88)", group = labelGroup, scale = 1) {
+        function addLabel(text, position, color = "#263238", bg = "rgba(255,255,255,0.88)", group = labelGroup, scale = 1, foreground = false) {
             const sprite = makeTextSprite(text, color, bg);
             sprite.scale.multiplyScalar(scale);
             sprite.position.copy(position);
+            if (foreground) {
+                sprite.material.depthTest = false;
+                sprite.material.depthWrite = false;
+                sprite.renderOrder = 24;
+            }
             group.add(sprite);
         }
 
-        function drawCurveArrow(points, color, opacity = 1) {
-            if (!cbElectronFlow.checked || opacity <= 0.02) return;
-            const mat = new THREE.MeshStandardMaterial({
-                color,
-                emissive: color,
-                emissiveIntensity: 0.04,
-                roughness: 0.34,
-                metalness: 0.0,
-                transparent: false,
-                opacity: 1
-            });
-            const curve = new THREE.CatmullRomCurve3(points);
-            const tube = new THREE.TubeGeometry(curve, 58, 0.032, 16, false);
-            const mesh = new THREE.Mesh(tube, mat);
-            arrowGroup.add(mesh);
+        const electronLabelColors = {
+            carbon: "#087f6e",
+            bromine: "#6a1b9a"
+        };
 
-            const end = points[points.length - 1];
-            const prev = points[points.length - 2];
-            const dir = end.clone().sub(prev).normalize();
-            const cone = new THREE.Mesh(new THREE.ConeGeometry(0.115, 0.32, 24), mat.clone());
-            cone.position.copy(end.clone().sub(dir.clone().multiplyScalar(0.06)));
-            cone.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
-            arrowGroup.add(cone);
+        function drawElectronDot(position, opacity = 1, radius = 0.072, color = colors.carbonPi) {
+            if (opacity <= 0.02) return;
+            const material = new THREE.MeshBasicMaterial({
+                color,
+                transparent: true,
+                opacity: clamp01(opacity),
+                depthTest: false,
+                depthWrite: false
+            });
+            const dot = new THREE.Mesh(new THREE.SphereGeometry(radius, 18, 12), material);
+            dot.position.copy(position);
+            dot.renderOrder = 25;
+            electronGroup.add(dot);
+        }
+
+        function drawElectronPair(center, axis = new THREE.Vector3(0, 0, 1), opacity = 1, separation = 0.16, color = colors.carbonPi) {
+            const pairAxis = axis.clone().normalize().multiplyScalar(separation * 0.5);
+            drawElectronDot(center.clone().add(pairAxis), opacity, 0.072, color);
+            drawElectronDot(center.clone().sub(pairAxis), opacity, 0.072, color);
+        }
+
+        function quadraticPoint(start, control, end, t) {
+            const u = 1 - t;
+            return start.clone().multiplyScalar(u * u)
+                .add(control.clone().multiplyScalar(2 * u * t))
+                .add(end.clone().multiplyScalar(t * t));
+        }
+
+        function drawMovingElectronPair(start, control, end, t, opacity = 1, targetAxis = new THREE.Vector3(0, 0, 1), color = colors.carbonPi) {
+            const progressOnPath = clamp01(t);
+            const center = quadraticPoint(start, control, end, progressOnPath);
+            const pathAxis = end.clone().sub(start).normalize();
+            const pairAxis = pathAxis.lerp(targetAxis.clone().normalize(), smooth(progressOnPath)).normalize();
+            drawElectronPair(center, pairAxis, opacity, 0.16, color);
+        }
+
+        function drawMovingElectronDot(start, control, end, t, opacity = 1, radius = 0.072, color = colors.carbonPi) {
+            drawElectronDot(quadraticPoint(start, control, end, clamp01(t)), opacity, radius, color);
+        }
+
+        function drawLonePair(center, direction, opacity = 1, separation = 0.16, color = colors.brominePair) {
+            const axis = direction.clone().normalize();
+            drawElectronPair(center, axis, opacity, separation, color);
+        }
+
+        // Br+ 的六个电子固定为：左上/右上两对孤对电子，左下/右下两个单电子。
+        // 这组位置相对于 Br+ 本身计算，确保 Br+ 作为三元环顶点时不发生漂移。
+        function drawBromoniumSixElectrons(center, pairOpacity = 1, singleOpacity = 1, color = colors.brominePair) {
+            const leftUpper = center.clone().add(new THREE.Vector3(-0.42, 0.42, 0.42));
+            const rightUpper = center.clone().add(new THREE.Vector3(0.42, 0.42, 0.42));
+            const leftLower = center.clone().add(new THREE.Vector3(-0.42, -0.42, 0.42));
+            const rightLower = center.clone().add(new THREE.Vector3(0.42, -0.42, 0.42));
+            drawElectronPair(leftUpper, new THREE.Vector3(1, 0, 0), pairOpacity, 0.18, color);
+            drawElectronPair(rightUpper, new THREE.Vector3(1, 0, 0), pairOpacity, 0.18, color);
+            drawElectronDot(leftLower, singleOpacity, 0.085, color);
+            drawElectronDot(rightLower, singleOpacity, 0.085, color);
+        }
+
+        function drawElectronLabel(text, position, scale = 0.58, color = electronLabelColors.carbon) {
+            // 电子迁移说明改为由右侧阶段说明呈现，画面仅保留原子名牌。
+            return;
         }
 
         function getGeometryState(route, p) {
+            if (route !== "convert" && p <= BRANCH_PROGRESS) route = "common";
             const state = {
                 atoms: {
                     C1: baseC.C1.clone(),
@@ -2024,11 +2228,21 @@
                 br1: brPos.br1Start.clone(),
                 br2: brPos.br2Start.clone(),
                 br1Bond: 0,
+                br1C2Bond: 0,
                 br2C2Bond: 0,
                 br2C4Bond: 0,
-                br2Charge: "-",
+                brBrBond: 0,
+                br1Charge: "",
+                br2Charge: "",
                 cationSite: "C2",
                 delocalization: 0,
+                piC12Opacity: 1,
+                piTransferProgress: 0,
+                piBuildProgress: 0,
+                piSplitProgress: 0,
+                ringBuildProgress: 0,
+                ringOpeningProgress: 0,
+                bondReturnProgress: 0,
                 bondOrders: { c12: 2, c23: 1, c34: 2 },
                 stage: "reactants"
             };
@@ -2041,96 +2255,334 @@
                     state.br2 = lerpVec(brPos.br2C2, brPos.br2Free, t);
                     state.br2C2Bond = 1 - t;
                     state.br2C4Bond = 0;
-                    state.bondOrders = {
-                        c12: 1,
-                        c23: 1 + 0.65 * t,
-                        c34: 2 - 0.75 * t
-                    };
-                    state.cationSite = t > 0.5 ? "delocalized" : "C2";
-                    state.delocalization = clamp01((t - 0.35) / 0.65);
-                    state.stage = t < 0.5 ? "A-dissociation" : "intermediate";
-                } else {
-                    const t = (p - 0.45) / 0.55;
-                    morphAtoms(state, productB.atoms, t);
-                    state.br2 = lerpVec(brPos.br2Free, brPos.br2C4Product, t);
-                    state.br2C2Bond = 0;
-                    state.br2C4Bond = t;
-                    state.bondOrders = {
-                        c12: 1,
-                        c23: 1.65 + 0.35 * t,
-                        c34: 1.25 - 0.25 * t
-                    };
-                    state.cationSite = t < 0.5 ? "delocalized" : "C4";
-                    state.delocalization = 1;
-                    state.stage = t < 0.55 ? "intermediate" : "B-forming";
-                }
-                if (p > 0.96) state.br2Charge = "";
-                return state;
-            }
-
-            if (p < 0.45) {
-                const t = p / 0.45;
-                state.br1 = lerpVec(brPos.br1Start, brPos.br1Bound, t);
-                state.br2 = lerpVec(brPos.br2Start, brPos.br2Free, t);
-                state.br1Bond = t;
-                if (route === "path12") {
-                    state.bondOrders = {
-                        c12: 2 - 1.0 * t,
-                        c23: 1,
-                        c34: 2
-                    };
+                    state.bondOrders = { c12: 1, c23: 1, c34: 2 };
                     state.cationSite = "C2";
-                    state.delocalization = 0;
-                } else {
+                    state.br2Charge = p > 0.02 ? "-" : "";
+                    state.stage = t < 0.72 ? "A-dissociation" : "intermediate";
+                } else if (p < 0.50) {
+                    state.br2 = brPos.br2Free.clone();
+                    state.br2Charge = "-";
+                    state.bondOrders = { c12: 1, c23: 1, c34: 2 };
+                    state.cationSite = "C2";
+                    state.stage = "intermediate";
+                } else if (p < 0.56) {
+                    state.br2 = brPos.br2Free.clone();
+                    state.br2Charge = "-";
+                    state.piTransferProgress = smooth((p - 0.50) / 0.06);
+                    state.bondOrders = { c12: 1, c23: 1, c34: 2 };
+                    state.cationSite = "C2";
+                    state.stage = "pi-transfer";
+                } else if (p < 0.58) {
+                    state.br2 = brPos.br2Free.clone();
+                    state.br2Charge = "-";
+                    state.piTransferProgress = 1;
+                    state.piBuildProgress = smooth((p - 0.56) / 0.02);
                     state.bondOrders = {
-                        c12: 2 - 0.9 * t,
-                        c23: 1 + 0.55 * t,
-                        c34: 2 - 0.55 * t
+                        c12: 1,
+                        c23: 1.25 + 0.75 * state.piBuildProgress,
+                        c34: 1
                     };
-                    state.cationSite = t > 0.55 ? "delocalized" : "C2";
-                    state.delocalization = clamp01((t - 0.42) / 0.58);
+                    state.cationSite = "C4";
+                    state.stage = "pi-arrived";
+                } else if (p < 0.62) {
+                    state.br2 = brPos.br2Free.clone();
+                    state.br2Charge = "-";
+                    state.piTransferProgress = 1;
+                    state.bondOrders = { c12: 1, c23: 2, c34: 1 };
+                    state.cationSite = "C4";
+                    state.stage = "allylic-cation";
+                } else if (p < 0.88) {
+                    const attackProgress = clamp01((p - 0.77) / 0.11);
+                    state.br2 = lerpVec(brPos.br2Free, brPos.br2C4, attackProgress);
+                    state.br2Charge = attackProgress < 1 ? "-" : "";
+                    state.br2C4Bond = attackProgress;
+                    state.piTransferProgress = 1;
+                    state.bondOrders = { c12: 1, c23: 2, c34: 1 };
+                    state.cationSite = attackProgress < 1 ? "C4" : "";
+                    state.stage = "B-forming";
+                } else if (p < 0.90) {
+                    state.br2 = brPos.br2C4.clone();
+                    state.br2Charge = "";
+                    state.br2C4Bond = 1;
+                    state.piTransferProgress = 1;
+                    state.bondOrders = { c12: 1, c23: 2, c34: 1 };
+                    state.cationSite = "";
+                    state.stage = "bond-complete";
+                } else {
+                    const geometryProgress = smooth((p - 0.90) / 0.10);
+                    morphAtoms(state, productB.atoms, geometryProgress);
+                    state.br2 = lerpVec(brPos.br2C4, brPos.br2C4Product, geometryProgress);
+                    state.br2Charge = "";
+                    state.br2C4Bond = 1;
+                    state.piTransferProgress = 1;
+                    state.bondOrders = { c12: 1, c23: 2, c34: 1 };
+                    state.cationSite = "";
+                    state.stage = "product-B";
                 }
-                state.stage = t < 0.45 ? "electrophilic-attack" : "intermediate";
                 return state;
             }
 
-            const t = (p - 0.45) / 0.55;
-            state.br1 = brPos.br1Bound.clone();
-            state.br1Bond = 1;
-            if (route === "path12") {
-                state.br2 = lerpVec(brPos.br2Free, brPos.br2C2, t);
-                state.br2C2Bond = t;
-                state.br2C4Bond = 0;
-                state.bondOrders = {
-                    c12: 1,
-                    c23: 1,
-                    c34: 2
-                };
+            if (p < 0.09) {
+                const t = p / 0.09;
+                const center = brStartCenter.clone().lerp(brApproachCenter, smooth(t));
+                const length = brStartLength + (brApproachLength - brStartLength) * smooth(t);
+                const direction = brStartDirection.clone().lerp(c12Perpendicular, smooth(t)).normalize();
+                const halfVector = direction.multiplyScalar(length * 0.5);
+                state.br1 = center.clone().sub(halfVector);
+                state.br2 = center.clone().add(halfVector);
+                state.brBrBond = 1;
+                state.br1Charge = "δ+";
+                state.br2Charge = "δ−";
+                state.piC12Opacity = 1;
+                return state;
+            }
+            if (p < 0.20) {
+                const center = brStartCenter.clone().lerp(brApproachCenter, 1);
+                const length = brStartLength + (brApproachLength - brStartLength) * 1;
+                const direction = brStartDirection.clone().lerp(c12Perpendicular, 1).normalize();
+                const halfVector = direction.multiplyScalar(length * 0.5);
+                state.br1 = center.clone().sub(halfVector);
+                state.br2 = center.clone().add(halfVector);
+                state.brBrBond = 1;
+                state.br1Charge = "δ+";
+                state.br2Charge = "δ−";
+                // π键电子对已经从云中释放出来，但在 Br-Br 完全断裂前保持在 C1-C2 中间。
+                state.piSplitProgress = 0;
+                state.piC12Opacity = 0;
+                state.bondOrders.c12 = 1;
+                state.stage = "pi-electron-pair-held";
+                return state;
+            }
+            if (p < 0.28) {
+                const t = smooth((p - 0.20) / 0.08);
+                // 先单独完成 Br-Br 断键；断键完成前不显示 Br+ 的最外层电子。
+                state.br1 = brApproach.br1.clone();
+                state.br2 = lerpVec(brApproach.br2, brPos.br2Free, t);
+                state.brBrBond = 1 - t;
+                state.br1Charge = "δ+";
+                state.br2Charge = "δ−";
+                state.piSplitProgress = 0;
+                state.piC12Opacity = 0;
+                state.bondOrders.c12 = 1;
+                state.stage = "ionization";
+                return state;
+            }
+            if (p < 0.31) {
+                // 28% 断键完成后先留出短暂停顿，隐藏 Brδ− 的最外层电子。
+                state.br1 = bromoniumCenter.clone();
+                state.br2 = brPos.br2Free.clone();
+                state.brBrBond = 0;
+                state.br1Charge = "+";
+                state.br2Charge = "-";
+                state.piSplitProgress = 0;
+                state.piC12Opacity = 0;
+                state.bondOrders = { c12: 1, c23: 1, c34: 2 };
+                state.stage = "post-ionization-pause";
+                return state;
+            }
+            if (p < 0.34) {
+                // 随后显示 Br+ 的最外层电子，仍暂不启动碳骨架电子迁移。
+                state.br1 = bromoniumCenter.clone();
+                state.br2 = brPos.br2Free.clone();
+                state.brBrBond = 0;
+                state.br1Charge = "+";
+                state.br2Charge = "-";
+                state.piSplitProgress = 0;
+                state.piC12Opacity = 0;
+                state.bondOrders = { c12: 1, c23: 1, c34: 2 };
+                state.stage = "bromonium-electrons";
+                return state;
+            }
+            if (p < 0.41) {
+                const t = smooth((p - 0.34) / 0.07);
+                state.br1 = bromoniumCenter.clone();
+                state.br2 = brPos.br2Free.clone();
+                state.brBrBond = 0;
+                state.br1Bond = 0;
+                state.br1C2Bond = 0;
+                state.br1Charge = "+";
+                state.br2Charge = "-";
+                state.bondOrders = { c12: 1, c23: 1, c34: 2 };
+                state.piSplitProgress = t;
+                state.ringBuildProgress = t;
+                state.piC12Opacity = 0;
+                state.stage = "pi-electrons-to-carbon";
+                return state;
+            }
+            if (p < 0.50) {
+                const t = smooth((p - 0.41) / 0.09);
+                state.br1 = bromoniumCenter.clone();
+                state.br2 = brPos.br2Free.clone();
+                state.brBrBond = 0;
+                state.br1Bond = t;
+                state.br1C2Bond = t;
+                state.br1Charge = "+";
+                state.br2Charge = "-";
+                state.bondOrders = { c12: 1, c23: 1, c34: 2 };
+                state.piSplitProgress = 1;
+                state.ringBuildProgress = t;
+                state.cationSite = "";
+                state.delocalization = 0;
+                state.piC12Opacity = 0;
+                state.stage = "synchronous-bonding";
+                return state;
+            }
+            if (p < 0.57) {
+                const t = smooth((p - 0.50) / 0.07);
+                // 50–57%：C2-Br+ 键逐渐拉长；不再设置单独的 47% 停顿帧。
+                state.br1 = lerpVec(bromoniumCenter, brPos.br1Bound, t);
+                state.br2 = brPos.br2Free.clone();
+                state.brBrBond = 0;
+                state.br1Bond = 1;
+                state.br1C2Bond = 1;
+                state.br1Charge = "+";
+                state.br2Charge = "-";
+                state.bondOrders = { c12: 1, c23: 1, c34: 2 };
+                state.ringOpeningProgress = t;
+                state.cationSite = "";
+                state.delocalization = 0;
+                state.piC12Opacity = 0;
+                state.stage = "c2-br-stretch";
+                return state;
+            }
+            if (p < 0.61) {
+                const t = smooth((p - 0.57) / 0.04);
+                state.br1 = brPos.br1Bound.clone();
+                state.br2 = brPos.br2Free.clone();
+                state.brBrBond = 0;
+                state.br1Bond = 1;
+                state.br1C2Bond = 0;
+                state.br1Charge = "+";
+                state.br2Charge = "-";
+                state.bondOrders = { c12: 1, c23: 1, c34: 2 };
+                state.ringOpeningProgress = 1;
+                state.bondReturnProgress = t;
+                state.cationSite = "";
+                state.delocalization = 0;
+                state.piC12Opacity = 0;
+                state.stage = "bond-electron-return";
+                return state;
+            }
+            if (p <= BRANCH_PROGRESS) {
+                // C2 保持原位；电子对抵达 Br+ 后才完成电荷转换。
+                state.atoms.C2 = baseC.C2.clone();
+                state.br1 = brPos.br1Bound.clone();
+                state.br2 = brPos.br2Free.clone();
+                state.brBrBond = 0;
+                state.br1Bond = 1;
+                state.br1C2Bond = 0;
+                state.br1Charge = "";
+                state.br2Charge = "-";
+                state.bondOrders = { c12: 1, c23: 1, c34: 2 };
+                state.ringOpeningProgress = 1;
+                state.bondReturnProgress = 1;
                 state.cationSite = "C2";
                 state.delocalization = 0;
-                state.stage = t < 0.55 ? "A-forming" : "product-A";
-            } else {
-                morphAtoms(state, productB.atoms, t);
-                state.br2 = lerpVec(brPos.br2Free, brPos.br2C4Product, t);
-                state.br2C2Bond = 0;
-                state.br2C4Bond = t;
-                state.bondOrders = {
-                    c12: 1,
-                    c23: 1.55 + 0.45 * t,
-                    c34: 1.45 - 0.45 * t
-                };
-                state.cationSite = t < 0.5 ? "delocalized" : "C4";
-                state.delocalization = Math.max(0.3, 1 - t);
-                state.stage = t < 0.55 ? "B-forming" : "product-B";
+                state.piC12Opacity = 0;
+                state.stage = "allylic-cation";
+                return state;
             }
-            if (p > 0.96) state.br2Charge = "";
+
+            state.br1 = brPos.br1Bound.clone();
+            state.br1Bond = 1;
+            state.brBrBond = 0;
+            if (route === "path12") {
+                if (p < 0.70) {
+                    state.br2 = brPos.br2Free.clone();
+                    state.br2Charge = "-";
+                    state.bondOrders = { c12: 1, c23: 1, c34: 2 };
+                    state.cationSite = "C2";
+                    state.stage = "allylic-cation";
+                } else if (p < 0.84) {
+                    const attackProgress = clamp01((p - 0.70) / 0.14);
+                    state.br2 = lerpVec(brPos.br2Free, brPos.br2C2, attackProgress);
+                    state.br2Charge = attackProgress < 1 ? "-" : "";
+                    state.br2C2Bond = attackProgress;
+                    state.bondOrders = { c12: 1, c23: 1, c34: 2 };
+                    state.cationSite = attackProgress < 1 ? "C2" : "";
+                    state.stage = "A-forming";
+                } else if (p < 0.92) {
+                    state.br2 = brPos.br2C2.clone();
+                    state.br2Charge = "";
+                    state.br2C2Bond = 1;
+                    state.bondOrders = { c12: 1, c23: 1, c34: 2 };
+                    state.cationSite = "";
+                    state.stage = "bond-complete";
+                } else {
+                    // A 的终态仅需保持已形成的 C2-Br 键，几何位置无需再次形变。
+                    state.br2 = brPos.br2C2.clone();
+                    state.br2Charge = "";
+                    state.br2C2Bond = 1;
+                    state.bondOrders = { c12: 1, c23: 1, c34: 2 };
+                    state.cationSite = "";
+                    state.stage = "product-A";
+                }
+            } else {
+                if (p < 0.70) {
+                    state.br2 = brPos.br2Free.clone();
+                    state.br2Charge = "-";
+                    state.bondOrders = { c12: 1, c23: 1, c34: 2 };
+                    state.cationSite = "C2";
+                    state.stage = "allylic-cation";
+                } else if (p < 0.76) {
+                    state.br2 = brPos.br2Free.clone();
+                    state.br2Charge = "-";
+                    state.piTransferProgress = smooth((p - 0.70) / 0.06);
+                    // π电子开始迁移时，C3=C4 已先断裂为单键；双键线条仍由 bondOrders 表示。
+                    state.bondOrders = { c12: 1, c23: 1, c34: 1 };
+                    state.cationSite = "C2";
+                    state.stage = "pi-transfer";
+                } else if (p < 0.78) {
+                    state.br2 = brPos.br2Free.clone();
+                    state.br2Charge = "-";
+                    state.piTransferProgress = 1;
+                    state.piBuildProgress = smooth((p - 0.76) / 0.02);
+                    state.bondOrders = {
+                        c12: 1,
+                        c23: 1.25 + 0.75 * state.piBuildProgress,
+                        c34: 1
+                    };
+                    state.cationSite = "C4";
+                    state.stage = "pi-arrived";
+                } else if (p < 0.85) {
+                    const attackProgress = clamp01((p - 0.78) / 0.07);
+                    state.br2 = lerpVec(brPos.br2Free, brPos.br2C4, attackProgress);
+                    state.br2Charge = attackProgress < 1 ? "-" : "";
+                    state.br2C4Bond = attackProgress;
+                    state.piTransferProgress = 1;
+                    state.bondOrders = { c12: 1, c23: 2, c34: 1 };
+                    state.cationSite = attackProgress < 1 ? "C4" : "";
+                    state.stage = "B-forming";
+                } else if (p < 0.90) {
+                    state.br2 = brPos.br2C4.clone();
+                    state.br2Charge = "";
+                    state.br2C4Bond = 1;
+                    state.piTransferProgress = 1;
+                    state.bondOrders = { c12: 1, c23: 2, c34: 1 };
+                    state.cationSite = "";
+                    state.stage = "bond-complete";
+                } else {
+                    const geometryProgress = smooth((p - 0.90) / 0.10);
+                    morphAtoms(state, productB.atoms, geometryProgress);
+                    state.br2 = lerpVec(brPos.br2C4, brPos.br2C4Product, geometryProgress);
+                    state.br2Charge = "";
+                    state.br2C4Bond = 1;
+                    state.piTransferProgress = 1;
+                    state.bondOrders = { c12: 1, c23: 2, c34: 1 };
+                    state.cationSite = "";
+                    state.stage = "product-B";
+                }
+            }
             return state;
         }
 
         function applyHydrogens(state) {
+            const blend = clamp01(progress / 0.45);
             Object.entries(hOffsets).forEach(([hId, [cId, offset]]) => {
                 if (!state.atoms[hId]) {
-                    state.atoms[hId] = state.atoms[cId].clone().add(offset);
+                    const planar = reactantHOffsets[hId][1];
+                    const useOffset = planar.clone().lerp(offset, blend).normalize().multiplyScalar(offset.length());
+                    state.atoms[hId] = state.atoms[cId].clone().add(useOffset);
                 }
             });
         }
@@ -2140,7 +2592,7 @@
             applyHydrogens(state);
             clearGroup(dynamicGroup);
             clearGroup(labelGroup);
-            clearGroup(arrowGroup);
+            clearGroup(electronGroup);
 
             Object.entries(state.atoms).forEach(([id, pos]) => atoms.get(id).position.copy(pos));
             atoms.get("Br1").position.copy(state.br1);
@@ -2154,9 +2606,10 @@
             drawBond(state.atoms.C2, state.atoms.C3, state.bondOrders.c23);
             drawBond(state.atoms.C3, state.atoms.C4, state.bondOrders.c34);
             if (currentPath !== "convert") {
-                drawBond(state.br1, state.br2, 1, Math.max(0, 1 - progress * 3.2), materials.weak);
+                drawBond(state.br1, state.br2, 1, state.brBrBond, materials.weak);
             }
             drawBond(state.atoms.C1, state.br1, 1, state.br1Bond, materials.bond);
+            drawBond(state.atoms.C2, state.br1, 1, state.br1C2Bond, materials.weak);
             drawBond(state.atoms.C2, state.br2, 1, state.br2C2Bond, state.br2C2Bond < 0.98 ? materials.weak : materials.bond);
             drawBond(state.atoms.C4, state.br2, 1, state.br2C4Bond, state.br2C4Bond < 0.98 ? materials.weak : materials.bond);
 
@@ -2166,9 +2619,22 @@
                 });
             }
 
-            drawPiCloud(state.atoms.C1, state.atoms.C2, state.bondOrders.c12);
-            drawPiCloud(state.atoms.C2, state.atoms.C3, state.bondOrders.c23);
-            drawPiCloud(state.atoms.C3, state.atoms.C4, state.bondOrders.c34);
+            // 初始反应物阶段仅保留双键线条，隐藏 C1=C2 与 C3=C4 的绿色 π 电子云；
+            // 进入机理演示后按当前反应状态绘制需要展示的 π 电子云。
+            if (progress >= 0.09) {
+                drawPiCloud(state.atoms.C1, state.atoms.C2, state.bondOrders.c12, state.piC12Opacity);
+                const c23PiOpacity = state.piBuildProgress > 0 ? 0.42 + 0.58 * state.piBuildProgress : 1;
+                const sharedStage = currentPath !== "convert" && progress <= BRANCH_PROGRESS;
+                const hideC23PiCloud = currentPath === "path14" && progress >= 0.57;
+                const hideC34PiCloud = ((currentPath === "path12" || currentPath === "path14") && progress >= 0.09)
+                    || (sharedStage && progress >= 0.20)
+                    // 选定 A/B 路径后，沿用“50% 以后隐藏 C3-C4 绿色 π云”的教学显示规则；
+                    // 共有阶段虽延长至 65%，双键线条仍保留用于表示键级。
+                    || ((currentPath === "path12" || currentPath === "path14") && progress >= 0.50);
+                const c34PiOpacity = progress < 0.56 ? 1 : (state.piTransferProgress > 0 ? 1 - state.piTransferProgress : 1);
+                if (!hideC23PiCloud) drawPiCloud(state.atoms.C2, state.atoms.C3, state.bondOrders.c23, c23PiOpacity);
+                if (!hideC34PiCloud) drawPiCloud(state.atoms.C3, state.atoms.C4, state.bondOrders.c34, c34PiOpacity);
+            }
 
             if (cbAtomLabels.checked) {
                 addLabels(state);
@@ -2178,13 +2644,15 @@
             drawEnergyCurve();
         }
 
-        function drawPiCloud(start, end, order) {
-            if (order < 1.35) return;
+        function drawPiCloud(start, end, order, opacity = 1) {
+            if (order < 1.35 || opacity <= 0.02) return;
             const mid = start.clone().add(end).multiplyScalar(0.5);
             const length = start.distanceTo(end) * 0.86;
             const geom = new THREE.SphereGeometry(0.18, 24, 16);
-            const cloudA = new THREE.Mesh(geom, materials.pi);
-            const cloudB = new THREE.Mesh(geom, materials.pi);
+            const cloudA = new THREE.Mesh(geom, materials.pi.clone());
+            const cloudB = new THREE.Mesh(geom, materials.pi.clone());
+            cloudA.material.opacity *= opacity;
+            cloudB.material.opacity *= opacity;
             const scale = new THREE.Vector3(length, 0.28, 0.08);
             cloudA.scale.copy(scale);
             cloudB.scale.copy(scale);
@@ -2197,29 +2665,218 @@
         }
 
         function addLabels(state) {
+            const formatBromineLabel = (charge) => {
+                if (charge === "+") return "Br⁺";
+                if (charge === "-") return "Br⁻";
+                if (charge === "δ+") return "Brδ⁺";
+                if (charge === "δ−") return "Brδ⁻";
+                return "Br";
+            };
             ["C1", "C2", "C3", "C4"].forEach((id, index) => {
-                addLabel(id, state.atoms[id].clone().add(new THREE.Vector3(0, -0.42, 0.08)), "#263238", "rgba(255,255,255,0.88)", labelGroup, 0.74);
+                const isCation = (id === "C2" && state.cationSite === "C2" && progress >= 0.59 && progress < 0.84)
+                    || (id === "C4" && state.cationSite === "C4" && progress >= 0.76 && progress < 0.85);
+                const cationLabel = id === "C2" && state.cationSite === "C2" && progress >= 0.59 && progress < 0.84
+                    ? "C2⁺"
+                    : id === "C4" && state.cationSite === "C4" && progress >= 0.76 && progress < 0.85
+                        ? "C4⁺"
+                        : id;
+                addLabel(cationLabel, state.atoms[id].clone().add(new THREE.Vector3(0, -0.46, 0.08)), isCation ? "#b71c1c" : "#263238", "rgba(255,255,255,0.92)", labelGroup, 0.92);
             });
-            addLabel("Br", state.br1.clone().add(new THREE.Vector3(-0.34, 0.44, 0.12)), "#263238", "rgba(255,255,255,0.88)", labelGroup, 0.74);
-            addLabel("Br", state.br2.clone().add(new THREE.Vector3(0.34, 0.44, 0.12)), "#263238", "rgba(255,255,255,0.88)", labelGroup, 0.74);
+            addLabel(formatBromineLabel(state.br1Charge), state.br1.clone().add(new THREE.Vector3(-0.66, 0.30, 0.12)), "#263238", "rgba(255,255,255,0.92)", labelGroup, 0.92);
+            addLabel(formatBromineLabel(state.br2Charge), state.br2.clone().add(new THREE.Vector3(0.66, 0.58, 0.12)), "#263238", "rgba(255,255,255,0.92)", labelGroup, 0.92);
         }
 
         function drawElectronFlow(state) {
-            if (state.delocalization > 0.08 && !state.stage.startsWith("product")) {
-                drawDelocalizationFlow(state);
+            if (!cbElectronFlow.checked) return;
+            if (currentPath === "convert") {
+                if (progress >= 0.02 && progress < 0.18) drawBondElectronReturn(state);
+                if (progress >= 0.50 && progress < 0.56) drawPi34To23Flow(state);
+                if (progress >= 0.59) drawNucleophileFlow(state);
+                return;
+            }
+            const sharedStage = currentPath !== "convert" && progress <= BRANCH_PROGRESS;
+            if (sharedStage && progress >= 0.09 && progress < 0.34) drawStaticPiElectronPair(state);
+            if (sharedStage && progress >= 0.20 && progress < 0.28) drawBr2IonizationFlow(state);
+            if (sharedStage && progress >= 0.34 && progress < 0.41) drawPiElectronsToCarbonSites(state);
+            if (sharedStage && progress >= 0.41 && progress < 0.50) drawSynchronousBondFormation(state);
+            // 成键阶段由 drawSynchronousBondFormation 接管两个下方单电子，
+            // 因此这里不能再绘制它们的固定副本，避免出现电子重影。
+            if (sharedStage && progress >= 0.31 && progress < 0.41) drawBromoniumLonePairs(state);
+            if (sharedStage && progress >= 0.57 && progress <= BRANCH_PROGRESS) drawC2BrElectronReturn(state);
+            if (currentPath === "path12" && progress >= BRANCH_PROGRESS) drawNucleophileFlow(state);
+            if (currentPath === "path14" && progress >= 0.70 && progress < 0.76) drawPi34To23Flow(state);
+            if (currentPath === "path14" && progress >= 0.78) drawNucleophileFlow(state);
+        }
+
+        function getStaticPiElectronPair(state) {
+            const c1 = state.atoms.C1;
+            const c2 = state.atoms.C2;
+            return {
+                center: c1.clone().lerp(c2, 0.5).add(new THREE.Vector3(0, 0.04, 0.42)),
+                c1Target: c1.clone().add(new THREE.Vector3(0.42, 0.66, 0.42)),
+                c2Target: c2.clone().add(new THREE.Vector3(-0.42, 0.66, 0.42))
+            };
+        }
+
+        function drawStaticPiElectronPair(state) {
+            const { center } = getStaticPiElectronPair(state);
+            drawElectronPair(center, c12Direction, 1, 0.16, colors.carbonPi);
+            drawElectronLabel("C1-C2 π键电子对暂留原位 · 2e−", center.clone().add(new THREE.Vector3(0, 1.16, 0.38)), 0.58, electronLabelColors.carbon);
+        }
+
+        function drawPiElectronsToCarbonSites(state) {
+            const { center, c1Target, c2Target } = getStaticPiElectronPair(state);
+            const t = state.piSplitProgress;
+            const c1Start = center.clone().add(new THREE.Vector3(-0.045, 0, 0));
+            const c2Start = center.clone().add(new THREE.Vector3(0.045, 0, 0));
+            drawMovingElectronDot(
+                c1Start,
+                center.clone().lerp(c1Target, 0.5).add(new THREE.Vector3(0, 0.24, 0)),
+                c1Target,
+                t,
+                1,
+                0.085,
+                colors.carbonPi
+            );
+            drawMovingElectronDot(
+                c2Start,
+                center.clone().lerp(c2Target, 0.5).add(new THREE.Vector3(0, 0.24, 0)),
+                c2Target,
+                t,
+                1,
+                0.085,
+                colors.carbonPi
+            );
+            drawElectronLabel("π电子对分别移向 C1右上方、C2左上方", center.clone().add(new THREE.Vector3(0, 1.16, 0.38)), 0.54, electronLabelColors.carbon);
+        }
+
+        function drawBr2IonizationFlow(state) {
+            const brBondMid = state.br1.clone().lerp(state.br2, 0.5);
+            const brToLeaving = state.br2.clone().sub(state.br1).normalize();
+            const start = brBondMid.clone().add(brToLeaving.clone().multiplyScalar(-0.08));
+            const end = state.br2.clone().add(brToLeaving.clone().multiplyScalar(0.56));
+            const t = clamp01((progress - 0.20) / 0.08);
+            const control = start.clone().lerp(end, 0.5).add(new THREE.Vector3(0, 0.34, 0.10));
+            drawMovingElectronPair(start, control, end, t, 1, brToLeaving, colors.brominePair);
+            drawElectronLabel("Br-Br键电子对向 Br− 转移 · 2e−", start.clone().lerp(end, 0.52).add(new THREE.Vector3(-0.78, 0.92, 0.28)), 0.62, electronLabelColors.bromine);
+        }
+
+        function drawBromoniumUpperPairs(center, opacity = 1, color = colors.brominePair) {
+            const leftUpper = center.clone().add(new THREE.Vector3(-0.42, 0.42, 0.42));
+            const rightUpper = center.clone().add(new THREE.Vector3(0.42, 0.42, 0.42));
+            drawElectronPair(leftUpper, new THREE.Vector3(1, 0, 0), opacity, 0.18, color);
+            drawElectronPair(rightUpper, new THREE.Vector3(1, 0, 0), opacity, 0.18, color);
+        }
+
+        function drawSynchronousBondFormation(state) {
+            const br = state.br1;
+            const c1 = state.atoms.C1;
+            const c2 = state.atoms.C2;
+            const t = state.ringBuildProgress;
+            const { c1Target, c2Target } = getStaticPiElectronPair(state);
+            const c1CarbonElectron = c1Target;
+            const c2CarbonElectron = c2Target;
+            const brLeftSingle = br.clone().add(new THREE.Vector3(-0.42, -0.42, 0.42));
+            const brRightSingle = br.clone().add(new THREE.Vector3(0.42, -0.42, 0.42));
+            const c1BondElectron = c1.clone().lerp(br, 0.5).add(new THREE.Vector3(0, 0.08, 0.42));
+            const c2BondElectron = c2.clone().lerp(br, 0.5).add(new THREE.Vector3(0, 0.08, 0.42));
+
+            // Br+ 的两对孤对电子保留；参与成键的两个单电子与碳电子同步靠近。
+            drawBromoniumUpperPairs(br, 1, colors.brominePair);
+            drawMovingElectronDot(c1CarbonElectron, c1CarbonElectron.clone().lerp(c1BondElectron, 0.5).add(new THREE.Vector3(0, 0.18, 0)), c1BondElectron, t, 1, 0.085, colors.carbonPi);
+            drawMovingElectronDot(brLeftSingle, brLeftSingle.clone().lerp(c1BondElectron, 0.5).add(new THREE.Vector3(0, 0.22, 0)), c1BondElectron, t, 1, 0.085, colors.brominePair);
+            drawMovingElectronDot(c2CarbonElectron, c2CarbonElectron.clone().lerp(c2BondElectron, 0.5).add(new THREE.Vector3(0, 0.18, 0)), c2BondElectron, t, 1, 0.085, colors.carbonPi);
+            drawMovingElectronDot(brRightSingle, brRightSingle.clone().lerp(c2BondElectron, 0.5).add(new THREE.Vector3(0, 0.22, 0)), c2BondElectron, t, 1, 0.085, colors.brominePair);
+            drawElectronLabel("两组电子同步靠近成键，成键后电子对消失", br.clone().add(new THREE.Vector3(0.34, -1.02, 0.36)), 0.48, electronLabelColors.bromine);
+        }
+
+        function drawC2BrElectronReturn(state) {
+            const c2 = state.atoms.C2;
+            const br = state.br1;
+            const bondMid = c2.clone().lerp(br, 0.48).add(new THREE.Vector3(0, 0.04, 0.22));
+            const target = br.clone().add(new THREE.Vector3(0, 0.42, 0.42));
+            const control = bondMid.clone().lerp(target, 0.5).add(new THREE.Vector3(0.20, 0.42, 0.12));
+            const t = state.bondReturnProgress;
+            if (state.br1Charge === "+") {
+                // 断键回迁阶段只保留 Br+ 上方两对孤对电子；左下/右下单电子已经参与成键，应消失。
+                drawBromoniumUpperPairs(br, 1, colors.brominePair);
+                const center = quadraticPoint(bondMid, control, target, clamp01(t));
+                const pathAxis = target.clone().sub(bondMid).normalize();
+                const pairAxis = pathAxis.lerp(target.clone().sub(bondMid).normalize(), smooth(clamp01(t))).normalize();
+                const pairOffset = pairAxis.multiplyScalar(0.08);
+                // 靠近 C2 的电子来自碳侧，显示为绿色；另一电子保持溴来源的紫色。
+                drawElectronDot(center.clone().sub(pairOffset), 1, 0.072, colors.carbonPi);
+                drawElectronDot(center.clone().add(pairOffset), 1, 0.072, colors.brominePair);
+                drawElectronLabel("C2-Br键断开后，电子对向 Br+ 迁移 · 2e−", bondMid.clone().lerp(target, 0.52).add(new THREE.Vector3(0.70, 0.82, 0.28)), 0.56, electronLabelColors.bromine);
             }
         }
 
-        function drawDelocalizationFlow(state) {
-            const opacity = 0.32 + 0.55 * clamp01(state.delocalization);
-            const pi34 = state.atoms.C3.clone().lerp(state.atoms.C4, 0.54).add(new THREE.Vector3(0.0, 0.34, 0.78));
-            const bond23 = state.atoms.C2.clone().lerp(state.atoms.C3, 0.52).add(new THREE.Vector3(0.0, 0.22, 0.78));
-            drawCurveArrow([
-                pi34,
-                state.atoms.C3.clone().add(new THREE.Vector3(0.10, 0.78, 0.98)),
-                bond23
-            ], colors.pi, opacity);
-            addLabel("π shift", state.atoms.C3.clone().add(new THREE.Vector3(0.12, 0.88, 0.62)), "#2e7d32", "rgba(255,255,255,0.9)", labelGroup);
+        function drawBromoniumLonePairs(state) {
+            if (state.br1Charge !== "+") return;
+            drawBromoniumSixElectrons(state.br1, 1, 1, colors.brominePair);
+            drawElectronLabel("Br+：左上/右上两对，左下/右下两个单电子", state.br1.clone().add(new THREE.Vector3(0.34, 1.06, 0.36)), 0.46, electronLabelColors.bromine);
+        }
+
+        function drawBondElectronReturn(state) {
+            const c2 = state.atoms.C2;
+            const br = state.br2;
+            const bondMid = c2.clone().lerp(br, 0.48).add(new THREE.Vector3(0, 0.04, 0.18));
+            const direction = br.clone().sub(c2).normalize();
+            const target = br.clone().add(direction.multiplyScalar(0.52)).add(new THREE.Vector3(0, 0.08, 0.16));
+            const control = bondMid.clone().lerp(target, 0.5).add(new THREE.Vector3(0.18, 0.48, 0.12));
+            const t = clamp01((progress - 0.02) / 0.16);
+            drawMovingElectronPair(bondMid, control, target, t, 1, direction, colors.brominePair);
+            drawElectronLabel("C2-Br 成键电子对 · 2e−", c2.clone().add(new THREE.Vector3(0, 1.08, 0.36)), 0.52, electronLabelColors.bromine);
+        }
+
+        function drawNucleophileFlow(state) {
+            const isPath14 = currentPath === "path14" || currentPath === "convert";
+            const targetAtom = isPath14 ? state.atoms.C4 : state.atoms.C2;
+            const start = state.br2.clone().add(new THREE.Vector3(0, 0.02, 0.42));
+            const end = targetAtom.clone().add(new THREE.Vector3(0, 0.02, 0.42));
+            const control = start.clone().lerp(end, 0.5).add(new THREE.Vector3(0, 0.88, 0.22));
+            const attackStart = isPath14 ? 0.78 : 0.70;
+            const attackEnd = isPath14 ? 0.85 : 0.84;
+            const t = clamp01((progress - attackStart) / (attackEnd - attackStart));
+            const bondAxis = targetAtom.clone().sub(state.br2).normalize();
+
+            if (progress < attackStart) {
+                drawLonePair(start, bondAxis, 1, 0.17, colors.brominePair);
+                drawElectronLabel("Br− 孤对电子 · 2e−", start.clone().add(new THREE.Vector3(-0.74, 0.78, 0.30)), 0.52, electronLabelColors.bromine);
+                return;
+            }
+
+            const bondMid = state.br2.clone().lerp(targetAtom, 0.5).add(new THREE.Vector3(0, 0.02, 0.42));
+            if (progress < attackEnd) {
+                drawMovingElectronPair(start, control, end, t, 1, bondAxis, colors.brominePair);
+                drawElectronLabel(
+                    "Br− 孤对电子 · 2e−",
+                    control.clone().add(new THREE.Vector3(-0.72, 0.42, 0.28)),
+                    0.52,
+                    electronLabelColors.bromine
+                );
+                return;
+            }
+            drawElectronLabel(`${isPath14 ? "C4" : "C2"}-Br 成键电子对 · 2e−`, bondMid.clone().add(new THREE.Vector3(0.18, 0.78, 0.24)), 0.50, electronLabelColors.bromine);
+        }
+
+        function drawPi34To23Flow(state) {
+            const flowStart = currentPath === "path14" ? 0.70 : 0.50;
+            const flowEnd = currentPath === "path14" ? 0.76 : 0.56;
+            const t = clamp01((progress - flowStart) / (flowEnd - flowStart));
+            const c34 = state.atoms.C3.clone().lerp(state.atoms.C4, 0.5);
+            const c23 = state.atoms.C2.clone().lerp(state.atoms.C3, 0.5);
+            const start = c34.clone().add(new THREE.Vector3(0, 0.34, 0.78));
+            const end = c23.clone().add(new THREE.Vector3(0, 0.34, 0.78));
+            const control = start.clone().lerp(end, 0.5).add(new THREE.Vector3(0, 0.48, 0.18));
+            const targetAxis = state.atoms.C3.clone().sub(state.atoms.C2).normalize();
+            if (t < 1) {
+                drawMovingElectronPair(start, control, end, t, 1, targetAxis, colors.carbonPi);
+            } else {
+                drawElectronPair(end, targetAxis, 1, 0.16, colors.carbonPi);
+            }
+            drawElectronLabel("C3=C4 π电子对 · 2e−", c23.clone().add(new THREE.Vector3(-0.30, 1.22, 0.42)), 0.52, electronLabelColors.carbon);
+            if (progress >= 0.56) drawElectronLabel("电子对已到达 C2-C3 键区", c23.clone().add(new THREE.Vector3(-0.30, 1.52, 0.42)), 0.50, electronLabelColors.carbon);
         }
 
         function updateTexts(state) {
@@ -2228,148 +2885,292 @@
             progressSlider.value = String(pc);
             thermoNote.style.display = currentPath === "convert" ? "block" : "none";
 
-            if (currentPath === "path12") {
-                if (progress < 0.18) {
-                    stageText.textContent = "反应物阶段：1,3-丁二烯的 π 电子极化 Br2，Brδ+ 正在靠近末端 C1。";
-                    mechanismNote.textContent = "C1=C2 的 π 键是电子对整体迁移：这一对电子用于形成 C1-Br 键；C2 不是留下单电子，而是形成空 p 轨道并带正电。";
-                    centerHint.textContent = "路径一：先形成共同中间体，再由 Br- 进攻 C2。";
-                } else if (progress < 0.5) {
-                    stageText.textContent = "1,2-加成中间体：C1-Br 键已形成，C2 带正电，C3=C4 双键保持不迁移。";
-                    mechanismNote.textContent = "生成 A 时采用 C2+ 这一共振贡献式来表达：正电荷停留在 C2，随后 Br- 直接进攻 C2，因此不展示正电荷转移到 C4。";
-                    centerHint.textContent = "A 路径：C2+ 直接被 Br- 捕获。";
-                } else if (progress < 0.9) {
-                    stageText.textContent = "第二步：Br- 进攻 C2，形成 1,2-加成产物 A。";
-                    mechanismNote.textContent = "这一过程中 C2-C3 仍为单键、C3=C4 仍为双键；Br- 与 C2 成键后正电荷被消除，得到 A。";
-                    centerHint.textContent = "TS-A 较低：动力学控制偏向 A。";
+            if (currentPath !== "convert" && progress <= BRANCH_PROGRESS) {
+                centerHint.textContent = "";
+                if (progress < 0.09) {
+                    stageText.textContent = "共同阶段：Br2 极化并接近 C1=C2。";
+                    mechanismNote.textContent = "此时只表示诱导极化：Brδ+···Brδ−，不把极化误写成完整 Br+ / Br− 离子对。";
+                    centerHint.textContent = "0–9%：Br₂ 极化并接近 C1=C2";
+                } else if (progress < 0.20) {
+                    stageText.textContent = "9–20%：C1-C2 的 π键变为一对电子并停留原位。";
+                    mechanismNote.textContent = "π键云消失，绿色电子对暂时停留在 C1-C2 中间，等待 Br-Br 键完全断裂。";
+                    centerHint.textContent = "9–20%：C1=C2 π电子对暂留原位";
+                } else if (progress < 0.28) {
+                    stageText.textContent = "20–28%：Br-Br 键正式离子化。";
+                    mechanismNote.textContent = "Br-Br 键逐步断裂；绿色 π电子对仍停留原位，Br+ 六电子要等键完全断裂后再显示。";
+                } else if (progress < 0.31) {
+                    stageText.textContent = "28–31%：Br-Br 键已完全断裂，准备调整最外层电子显示。";
+                    mechanismNote.textContent = "先完成 Br-Br 断键；Brδ− 的最外层电子暂不显示，Brδ+ 的最外层电子尚未显示。";
+                    centerHint.textContent = "隐藏 Brδ− 的最外层电子，显示 Brδ+ 的最外层电子";
+                } else if (progress < 0.34) {
+                    stageText.textContent = "31–34%：隐藏 Brδ− 的最外层电子，显示 Brδ+ 的最外层电子。";
+                    mechanismNote.textContent = "Br+ 固定在三元环顶点，先完成最外层电子的显示切换；绿色 π电子对仍暂留原位。";
+                    centerHint.textContent = "正在切换 Brδ− / Brδ+ 的最外层电子显示";
+                } else if (progress < 0.41) {
+                    stageText.textContent = "34–41%：π电子对分别移向 C1右上方和 C2左上方。";
+                    mechanismNote.textContent = "最外层电子显示切换完成；绿色电子保持原色并慢速移动，准备与 Br+ 的单电子同步靠近。";
+                    centerHint.textContent = "绿色 π电子对开始移向 C1、C2";
+                } else if (progress < 0.50) {
+                    stageText.textContent = "41–50%：两组电子同步靠近并形成 C1-Br、C2-Br 键。";
+                    mechanismNote.textContent = "成键的两组电子同步靠近；新键形成的瞬间，参与成键的电子对全部消失。";
+                    centerHint.textContent = "41–50%：两组电子同步靠近并形成新键";
+                } else if (progress < 0.57) {
+                    stageText.textContent = "50–57%：C2-Br+ 键逐渐拉长。";
+                    mechanismNote.textContent = "C2 保持原位，Br+ 携带一对电子远离 C2；此时 C2-Br+ 键仍存在，电子对暂不显示。";
+                    centerHint.textContent = "50–57%：C2-Br+ 键逐渐拉长";
+                } else if (progress < 0.61) {
+                    stageText.textContent = "57–61%：C2-Br+ 键断开，电子对向 Br+ 迁移。";
+                    mechanismNote.textContent = "键断开后才出现电子对；电子对向 Br+ 附近移动，标签保持 Br+，C2 位置不变。";
+                    centerHint.textContent = "57–61%：C2-Br+ 键断开，电子对回到 Br+";
+                } else if (progress < BRANCH_PROGRESS) {
+                    stageText.textContent = "61–65%：电子对到达 Br+，生成 Br 与 C2+。";
+                    mechanismNote.textContent = "电子对到达 Br+ 附近后消失，Br+ 转为中性的 Br，C2 旁出现 C2+，准备进入公共烯丙基中间体。";
+                    centerHint.textContent = "61–65%：共同烯丙基中间体形成";
                 } else {
-                    stageText.textContent = "产物 A：BrCH2-CHBr-CH=CH2，保留端烯烃，能量高于 B。";
-                    mechanismNote.textContent = "A 是动力学产物；若温度升高或时间延长，可重新离子化并转化为更稳定的 B。";
+                    stageText.textContent = "共同中间体 · 65% · 待选择 A / B";
+                    mechanismNote.textContent = "C2 与 C4 是同一烯丙基中间体的亲电位点；下一步分别对应 1,2 或 1,4 加成。";
+                    centerHint.textContent = "共同中间体：请选择 A / B 路径";
+                }
+                return;
+            }
+
+            if (currentPath === "path12") {
+                if (progress < BRANCH_PROGRESS) {
+                    stageText.textContent = "共同阶段：先形成烯丙基中间体。";
+                    mechanismNote.textContent = "1,2-加成与 1,4-加成共享第一步；动画在 65% 分岔。";
+                    centerHint.textContent = "路径一：先形成共同中间体，再由 Br− 进攻 C2。";
+                } else if (progress < 0.70) {
+                    stageText.textContent = "65–70%：C2+ 与 Br− 保持分离。";
+                    mechanismNote.textContent = "共同中间体暂不改变 C3=C4 双键；紫色 Br− 孤对电子对准 C2。";
+                    centerHint.textContent = "C2+ 等待 Br− 捕获。";
+                } else if (progress < 0.84) {
+                    stageText.textContent = "1,2-加成：Br− 孤对电子向 C2 移动。";
+                    mechanismNote.textContent = "移动阶段只显示这一对紫色电子；电子尚未到达键区前，不绘制固定 C2-Br 成键电子。";
+                    centerHint.textContent = "70–84%：一对 Br− 孤对电子完成 C2-Br 成键。";
+                } else if (progress < 0.92) {
+                    stageText.textContent = "1,2-加成：C2-Br 成键完成。";
+                    mechanismNote.textContent = "移动电子对已经消失，只保留 C2-Br 键区内的一对紫色电子；C2+ 与 Br− 标签同时消失。";
+                    centerHint.textContent = "C2-Br 键已形成，产物 A 正在稳定。";
+                } else {
+                    stageText.textContent = "产物 A：BrCH2-CHBr-CH=CH2。";
+                    mechanismNote.textContent = "A 保留端烯烃，是较低活化能形成的动力学产物；C3=C4 双键保持不迁移。";
                     centerHint.textContent = "A：1,2-加成产物，动力学产物。";
                 }
             } else if (currentPath === "path14") {
-                if (progress < 0.18) {
-                    stageText.textContent = "反应物阶段：第一步仍由二烯 π 键进攻 Brδ+，生成共同烯丙基中间体。";
-                    mechanismNote.textContent = "第一步同样是 π 电子对整体形成 C1-Br 键，Br-Br 键电子对给到另一端溴生成 Br-。";
-                    centerHint.textContent = "路径二：同一个中间体，Br- 攻击 C4。";
-                } else if (progress < 0.5) {
-                    stageText.textContent = "中间体阶段：C3=C4 的 π 电子对向 C2-C3 移动，正电荷由 C2 离域到 C4。";
-                    mechanismNote.textContent = "共振式 BrCH2-CH=CH-CH2+ 解释了 Br- 能在 C4 成键；动画中 C2-C3 双键逐渐增强，C3-C4 双键逐渐减弱。";
-                    centerHint.textContent = "共振使 C4 也成为亲电位点。";
-                } else if (progress < 0.9) {
-                    stageText.textContent = "第二步：Br- 进攻 C4，生成 1,4-加成产物 B。";
-                    mechanismNote.textContent = "该路径第二步活化能较高，但最终形成内烯烃，产物能量更低。";
-                    centerHint.textContent = "TS-B 较高，但终点更低。";
+                if (progress < 0.70) {
+                    stageText.textContent = "65–70%：共同中间体：C2+ 与 Br− 保持分离。";
+                    mechanismNote.textContent = "1,4-路径先保持 C3=C4 双键、C2-C3 单键；此时不显示 C4+。";
+                    centerHint.textContent = "路径二：先完成 π电子重排，再由 Br− 进攻 C4。";
+                } else if (progress < 0.76) {
+                    stageText.textContent = "1,4-加成：C3=C4 π电子对向 C2-C3 迁移。";
+                    mechanismNote.textContent = "绿色电子对正在迁移；从 70% 起 C3=C4 已断裂为单键，C2-C3 仍显示为单键。";
+                    centerHint.textContent = "70–76%：只观察碳骨架 π电子迁移。";
+                } else if (progress < 0.78) {
+                    stageText.textContent = "1,4-加成：C2=C3 双键建立。";
+                    mechanismNote.textContent = "π电子对到达后，C3=C4 已经断裂为单键并出现 C4+；随后完成 C2=C3 双键。";
+                    centerHint.textContent = "76–78%：C3=C4 变为单键并建立 C2=C3 双键。";
+                } else if (progress < 0.85) {
+                    stageText.textContent = "1,4-加成：Br− 孤对电子向 C4 移动。";
+                    mechanismNote.textContent = "移动阶段只显示一对紫色 Br− 孤对电子，并沿 Br–C4 目标键方向旋转；不同时显示固定 C4-Br 电子。";
+                    centerHint.textContent = "78–85%：Br− 进攻 C4。";
+                } else if (progress < 0.90) {
+                    stageText.textContent = "1,4-加成：C4-Br 成键完成。";
+                    mechanismNote.textContent = "移动电子对消失，只保留 C4-Br 键区内的一对紫色电子；C4+ 与 Br− 标签消失。";
+                    centerHint.textContent = "85–90%：C4-Br 键已形成，产物 B 正在稳定。";
                 } else {
-                    stageText.textContent = "产物 B：BrCH2-CH=CH-CH2Br，内烯烃更稳定，能量低于 A。";
-                    mechanismNote.textContent = "B 是热力学稳定产物；25 ℃ 时比例明显升高，说明平衡更偏向 B。";
+                    stageText.textContent = "产物 B：BrCH2-CH=CH-CH2Br。";
+                    mechanismNote.textContent = "B 保留取代程度更高的内烯烃，终态能量低于 A，是热力学稳定产物。";
                     centerHint.textContent = "B：1,4-加成产物，热力学产物。";
                 }
             } else {
                 thermoNote.innerHTML = "<span class=\"note-title\">为什么 B 比 A 能量低</span>A 中剩余双键是端烯烃 CH=CH2，取代程度较低；B 中剩余双键位于 C2=C3，是内烯烃，双键两侧连接碳链，烷基取代和超共轭稳定作用更强。因此 B 的终态能量低于 A，属于热力学稳定产物。";
                 if (progress < 0.18) {
-                    stageText.textContent = "起点 A：1,2-加成产物在常温下可缓慢重新离子化。";
-                    mechanismNote.textContent = "C2-Br 键逐渐异裂，成键电子对回到 Br 形成 Br-，C2 重新出现空 p 轨道和正电荷；这不是自由基单电子过程。";
+                    stageText.textContent = "起点 A：C2-Br 键缓慢异裂。";
+                    mechanismNote.textContent = "A 的 C2-Br 成键电子对沿 C2-Br 键方向回到 Br；这是电子对过程，不使用单电子自由基表示。";
                     centerHint.textContent = "A 慢慢回到可共振中间体。";
-                } else if (progress < 0.5) {
-                    stageText.textContent = "重新形成中间体：C3=C4 的 π 电子对向 C2-C3 移动，正电荷由 C2 离域到 C4。";
-                    mechanismNote.textContent = "该中间体让 A 与 B 可以互相转化；绿色箭头表示电子对迁移，蓝色 C2+ ↔ C4+ 表示正电荷分散。";
+                } else if (progress < 0.45) {
+                    stageText.textContent = "重新形成共同中间体：Br− 返回，C2+ 重新出现。";
+                    mechanismNote.textContent = "C2-Br 键已解离，C3=C4 双键仍在；随后等待 1,4 路径的 π电子重排。";
                     centerHint.textContent = "共同中间体重新出现。";
-                } else if (progress < 0.9) {
-                    stageText.textContent = "Br- 改从 C4 进攻，C2=C3 双键逐步建立。";
-                    mechanismNote.textContent = "这一步通向 1,4-加成产物；虽然越过 TS-B 的势垒较高，但产物 B 形成更稳定的内烯烃，所以终点更低。";
-                    centerHint.textContent = "Br- 转向 C4，A 转化为 B。";
+                } else if (progress < 0.50) {
+                    stageText.textContent = "转化阶段：共同中间体暂时保持。";
+                    mechanismNote.textContent = "C2+ 与 Br− 保持分离，C3=C4 为双键，C2-C3 为单键。";
+                    centerHint.textContent = "准备开始 π电子重排。";
+                } else if (progress < 0.56) {
+                    stageText.textContent = "转化阶段：C3=C4 π电子对向 C2-C3 迁移。";
+                    mechanismNote.textContent = "迁移完成前不改变最终键级；绿色电子对沿碳骨架方向移动。";
+                    centerHint.textContent = "先完成 π电子重排，再进行 C4 成键。";
+                } else if (progress < 0.62) {
+                    stageText.textContent = "转化阶段：C4+ 形成，C2=C3 双键建立。";
+                    mechanismNote.textContent = "C3=C4 已更新为单键，C2=C3 完成双键，C4 等待 Br− 捕获。";
+                    centerHint.textContent = "C4+ 已成为明确亲电位点。";
+                } else if (progress < 0.82) {
+                    stageText.textContent = "Br− 的一对孤对电子进攻 C4。";
+                    mechanismNote.textContent = "只显示移动中的一对紫色电子；到达 C4-Br 键区后才替换成固定成键电子。";
+                    centerHint.textContent = "Br− 转向 C4，A 转化为 B。";
+                } else if (progress < 0.90) {
+                    stageText.textContent = "C4-Br 成键完成，B 的骨架已经建立。";
+                    mechanismNote.textContent = "C4+ 消失、Br− 标签消失，只保留 C4-Br 键区内的成键电子对。";
+                    centerHint.textContent = "B 正在稳定化。";
                 } else {
-                    stageText.textContent = "终点 B：1,4-加成产物能量更低，常温下逐渐富集。";
-                    mechanismNote.textContent = "B 的 C2=C3 双键是内烯烃，比 A 的端烯烃更稳定；这解释了 25 ℃ 时 B 比例显著升高，也解释了 A 可缓慢转化为 B。";
+                    stageText.textContent = "终点 B：1,4-加成产物能量更低。";
+                    mechanismNote.textContent = "B 的 C2=C3 双键是内烯烃，比 A 的端烯烃更稳定，因此常温下逐渐富集。";
                     centerHint.textContent = "B 更稳定，因此是热力学产物。";
                 }
             }
         }
 
+        // 二维能量图采用历史版本中经过校验的“反应物→TS1→溴鎓离子中间体→产物”节点。
+        // 当前动画把溴鎓离子中间体放在 65%，因此将 yzz 版本的 46% 节点映射到 65%。
+        const energyGraphConfigs = {
+            common: {
+                title: "二维能量图 · 共同路径与 A/B 分岔",
+                product: "共同溴鎓离子中间体",
+                markerColor: "#263238",
+                energies: [
+                    { p: 0, e: 20, label: "反应物" },
+                    { p: 0.31, e: 58, label: "TS1" },
+                    { p: BRANCH_PROGRESS, e: 24, label: "溴鎓离子中间体 · 65%" }
+                ]
+            },
+            path12: {
+                title: "二维能量图 · 共同路径与 A/B 分岔",
+                product: "A = BrCH2-CHBr-CH=CH2",
+                markerColor: "#1565c0",
+                energies: [
+                    { p: 0, e: 20, label: "反应物" },
+                    { p: 0.31, e: 58, label: "TS1" },
+                    { p: BRANCH_PROGRESS, e: 24, label: "溴鎓离子中间体" },
+                    { p: 0.78, e: 38, label: "TS-A" },
+                    { p: 1, e: 16, label: "A" }
+                ]
+            },
+            path14: {
+                title: "二维能量图 · 共同路径与 A/B 分岔",
+                product: "B = BrCH2-CH=CH-CH2Br",
+                markerColor: "#d84315",
+                energies: [
+                    { p: 0, e: 20, label: "反应物" },
+                    { p: 0.31, e: 58, label: "TS1" },
+                    { p: BRANCH_PROGRESS, e: 24, label: "溴鎓离子中间体" },
+                    { p: 0.82, e: 48, label: "TS-B" },
+                    { p: 1, e: 2, label: "B" }
+                ]
+            },
+            convert: {
+                title: "二维能量图 · A 转化为 B",
+                product: "A 重新离子化后转化为 B",
+                markerColor: "#0097c2",
+                energies: [
+                    { p: 0, e: 16, label: "A" },
+                    { p: 0.26, e: 42, label: "离子化 TS" },
+                    { p: 0.46, e: 24, label: "溴鎓离子中间体" },
+                    { p: 0.72, e: 48, label: "TS-B" },
+                    { p: 1, e: 2, label: "B" }
+                ]
+            }
+        };
+
         function energyAt(config, p) {
             const points = config.energies;
-            for (let i = 0; i < points.length - 1; i++) {
-                const a = points[i];
-                const b = points[i + 1];
-                if (p >= a.p && p <= b.p) {
-                    const t = (p - a.p) / (b.p - a.p);
-                    return a.e + (b.e - a.e) * smooth(t);
-                }
-            }
-            return points[points.length - 1].e;
+            if (p <= points[0].p) return points[0].e;
+            if (p >= points[points.length - 1].p) return points[points.length - 1].e;
+            let i = 0;
+            while (i < points.length - 1 && p > points[i + 1].p) i++;
+            const b = points[i], c = points[i + 1];
+            const span = c.p - b.p;
+            const tangent = (index) => {
+                if (index === 0 || index === points.length - 1) return 0;
+                const left = points[index - 1], mid = points[index], right = points[index + 1];
+                const h0 = mid.p - left.p, h1 = right.p - mid.p;
+                const s0 = (mid.e - left.e) / h0, s1 = (right.e - mid.e) / h1;
+                if (s0 * s1 <= 0) return 0;
+                return 3 * (h0 + h1) / ((2 * h1 + h0) / s0 + (h1 + 2 * h0) / s1);
+            };
+            const t = (p - b.p) / span;
+            const mB = tangent(i), mC = tangent(i + 1);
+            const h00 = 2 * t * t * t - 3 * t * t + 1;
+            const h10 = t * t * t - 2 * t * t + t;
+            const h01 = -2 * t * t * t + 3 * t * t;
+            const h11 = t * t * t - t * t;
+            return h00 * b.e + h10 * span * mB + h01 * c.e + h11 * span * mC;
         }
 
-        function sampleEnergy(config, steps = 120) {
+        function sampleEnergy(config, steps = 120, from = 0, to = 1) {
             const samples = [];
             for (let i = 0; i <= steps; i++) {
-                const p = i / steps;
+                const p = from + (to - from) * i / steps;
                 samples.push({ p, e: energyAt(config, p) });
             }
             return samples;
         }
 
         function drawEnergyCurve() {
-            energyPanel.style.display = cbEnergy.checked ? "block" : "none";
-            if (!cbEnergy.checked) return;
+            energyPanel.style.display = cbEnergy.checked ? "flex" : "none";
+            document.body.classList.toggle("energy-hidden", !cbEnergy.checked);
+            if (!cbEnergy.checked || !energySvg) return;
 
-            const config = pathConfig[currentPath];
+            const width = 460, height = 230;
             const pad = { left: 42, right: 18, top: 18, bottom: 34 };
-            const width = 460;
-            const height = 230;
             const plotW = width - pad.left - pad.right;
             const plotH = height - pad.top - pad.bottom;
-            const minE = 0;
-            const maxE = 62;
+            const minE = 0, maxE = 62;
             const xFor = (p) => pad.left + p * plotW;
             const yFor = (e) => pad.top + (maxE - e) / (maxE - minE) * plotH;
-            const samples = sampleEnergy(config);
-            const line = samples.map((d) => `${xFor(d.p).toFixed(1)},${yFor(d.e).toFixed(1)}`).join(" ");
-            const markerE = energyAt(config, progress);
-            const markerX = xFor(progress);
-            const markerY = yFor(markerE);
-            const color = config.markerColor;
-
-            energyTitle.textContent = config.title;
-            energyReadout.textContent = `当前相对能量：${markerE.toFixed(1)}；终点：${config.product}`;
-
-            const labels = config.energies.map((d) => {
-                const x = xFor(d.p);
-                const y = yFor(d.e);
-                const anchor = d.p > 0.82 ? "end" : d.p < 0.08 ? "start" : "middle";
+            const converting = currentPath === "convert";
+            const markerConfig = energyGraphConfigs[currentPath];
+            const linePoints = (config, from = 0, to = 1) => sampleEnergy(config, 140, from, to).map((d) => `${xFor(d.p).toFixed(1)},${yFor(d.e).toFixed(1)}`).join(" ");
+            const esc = (value) => String(value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+            const labelsFor = (config, color, predicate = () => true) => config.energies.filter(predicate).map((d) => {
+                const x = xFor(d.p), y = yFor(d.e);
+                const anchor = d.p > 0.84 ? "end" : d.p < 0.08 ? "start" : "middle";
                 const dy = d.e > 42 ? -8 : 18;
-                return `<circle cx="${x}" cy="${y}" r="3.3" fill="${color}"></circle>
-                    <text x="${x}" y="${y + dy}" text-anchor="${anchor}" font-size="12" fill="#263238">${d.label}</text>`;
+                return `<circle cx="${x}" cy="${y}" r="3.3" fill="${color}"></circle><text x="${x}" y="${y + dy}" text-anchor="${anchor}" font-size="12" fill="${color}">${esc(d.label)}</text>`;
             }).join("");
 
-            const guideY_A = yFor(16);
-            const guideY_B = yFor(2);
-            energySvg.innerHTML = `
-                <defs>
-                    <marker id="energy-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
-                        <path d="M0,0 L8,4 L0,8 Z" fill="#546e7a"></path>
-                    </marker>
-                </defs>
+            let curves = "", labels = "";
+            if (converting) {
+                curves = `<polyline points="${linePoints(markerConfig)}" fill="none" stroke="#0097c2" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"></polyline>`;
+                labels = labelsFor(markerConfig, "#0097c2");
+            } else {
+                const common = energyGraphConfigs.common;
+                const a = energyGraphConfigs.path12;
+                const b = energyGraphConfigs.path14;
+                curves = `<polyline points="${linePoints(common, 0, BRANCH_PROGRESS)}" fill="none" stroke="#263238" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"></polyline>`
+                    + `<polyline points="${linePoints(a, BRANCH_PROGRESS, 1)}" fill="none" stroke="#1565c0" stroke-opacity="${currentPath === "path14" ? 0.32 : 1}" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"></polyline>`
+                    + `<polyline points="${linePoints(b, BRANCH_PROGRESS, 1)}" fill="none" stroke="#d84315" stroke-opacity="${currentPath === "path12" ? 0.32 : 1}" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"></polyline>`;
+                labels = labelsFor(common, "#263238") + labelsFor(a, "#1565c0", (d) => d.p > BRANCH_PROGRESS) + labelsFor(b, "#d84315", (d) => d.p > BRANCH_PROGRESS);
+            }
+
+            const markerE = energyAt(markerConfig, progress);
+            const markerX = xFor(progress), markerY = yFor(markerE);
+            const guideY_A = yFor(16), guideY_B = yFor(2);
+            energyTitle.textContent = markerConfig.title;
+            energyReadout.textContent = `定性示意 · 相对能量 ${markerE.toFixed(1)} · ${Math.round(progress * 100)}% · ${currentPath === "common" ? (progress === BRANCH_PROGRESS ? "待选择 A / B" : "共同阶段") : pathConfig[currentPath].product}`;
+            energySvg.innerHTML = `<defs><marker id="energy-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#546e7a"></path></marker></defs>
                 <line x1="${pad.left}" y1="${height - pad.bottom}" x2="${width - pad.right + 8}" y2="${height - pad.bottom}" stroke="#546e7a" stroke-width="1.4" marker-end="url(#energy-arrow)"></line>
                 <line x1="${pad.left}" y1="${height - pad.bottom}" x2="${pad.left}" y2="${pad.top - 8}" stroke="#546e7a" stroke-width="1.4" marker-end="url(#energy-arrow)"></line>
-                <text x="6" y="26" font-size="12" fill="#546e7a">能量</text>
-                <text x="${width - 96}" y="${height - 8}" font-size="12" fill="#546e7a">反应进程</text>
-                <line x1="${pad.left}" y1="${guideY_A}" x2="${width - pad.right}" y2="${guideY_A}" stroke="#1565c0" stroke-width="1" stroke-dasharray="4 5" opacity="0.55"></line>
-                <line x1="${pad.left}" y1="${guideY_B}" x2="${width - pad.right}" y2="${guideY_B}" stroke="#d84315" stroke-width="1" stroke-dasharray="4 5" opacity="0.55"></line>
-                <text x="${width - 22}" y="${guideY_A - 5}" text-anchor="end" font-size="12" fill="#1565c0">A</text>
-                <text x="${width - 22}" y="${guideY_B + 16}" text-anchor="end" font-size="12" fill="#d84315">B 更低</text>
-                <polyline points="${line}" fill="none" stroke="${color}" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"></polyline>
-                ${labels}
-                <line x1="${markerX}" y1="${height - pad.bottom}" x2="${markerX}" y2="${markerY}" stroke="#263238" stroke-width="1.2" stroke-dasharray="4 4"></line>
-                <circle cx="${markerX}" cy="${markerY}" r="7" fill="${color}" stroke="#ffffff" stroke-width="2"></circle>
-            `;
+                <text x="6" y="26" font-size="12" fill="#546e7a">相对能量</text><text x="${width - 74}" y="${height - 8}" font-size="12" fill="#546e7a">反应进程 / %</text>
+                <line x1="${pad.left}" y1="${guideY_A}" x2="${width - pad.right}" y2="${guideY_A}" stroke="#1565c0" stroke-width="1" stroke-dasharray="4 5" opacity="0.45"></line>
+                <line x1="${pad.left}" y1="${guideY_B}" x2="${width - pad.right}" y2="${guideY_B}" stroke="#d84315" stroke-width="1" stroke-dasharray="4 5" opacity="0.45"></line>
+                <text x="${width - 22}" y="${guideY_A - 5}" text-anchor="end" font-size="12" fill="#1565c0">A</text><text x="${width - 22}" y="${guideY_B + 16}" text-anchor="end" font-size="12" fill="#d84315">B 更低</text>
+                <text x="${xFor(0)}" y="${height - 10}" text-anchor="middle" font-size="11" fill="#546e7a">0</text><text x="${xFor(BRANCH_PROGRESS)}" y="${height - 10}" text-anchor="middle" font-size="11" fill="#546e7a">65</text><text x="${xFor(1)}" y="${height - 10}" text-anchor="middle" font-size="11" fill="#546e7a">100</text>
+                ${curves}${labels}<line x1="${markerX}" y1="${height - pad.bottom}" x2="${markerX}" y2="${markerY}" stroke="#263238" stroke-width="1.2" stroke-dasharray="4 4"></line><circle cx="${markerX}" cy="${markerY}" r="7" fill="${markerConfig.markerColor}" stroke="#ffffff" stroke-width="2"></circle>`;
+            btnProduct.disabled = currentPath === "common";
         }
 
         function setProgress(value) {
-            progress = clamp01(value);
+            progress = currentPath === "common" ? Math.min(BRANCH_PROGRESS, clamp01(value)) : clamp01(value);
+            if (currentPath === "common" && progress >= BRANCH_PROGRESS) {
+                playing = false;
+                btnPlay.textContent = "待选择 A / B";
+            }
             updateMolecule();
         }
 
         function switchPath(path) {
+            if (path === "common") path = "path12";
+            if (!pathConfig[path]) path = "path12";
             currentPath = path;
             playing = false;
             btnPlay.textContent = "播放当前路径";
@@ -2406,7 +3207,9 @@
         btnIntermediate.addEventListener("click", () => {
             playing = false;
             btnPlay.textContent = "播放当前路径";
-            setProgress(0.46);
+            if (currentPath !== "convert") currentPath = "path12";
+            cbEnergy.checked = true;
+            setProgress(currentPath === "convert" ? 0.46 : BRANCH_PROGRESS);
         });
 
         btnProduct.addEventListener("click", () => {
@@ -2425,18 +3228,52 @@
             input.addEventListener("change", updateMolecule);
         });
 
-        window.addEventListener("resize", () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
+        function fitMoleculeCamera() {
+            const w = container.clientWidth;
+            const h = container.clientHeight;
+            if (!w || !h) return;
+            const fitState = getGeometryState(currentPath, progress);
+            applyHydrogens(fitState);
+            const fitPoints = [...Object.values(fitState.atoms), fitState.br1, fitState.br2];
+            const fitBox = new THREE.Box3().setFromPoints(fitPoints);
+            const fitCenter = fitBox.getCenter(new THREE.Vector3());
+            const fitRadius = fitBox.getBoundingSphere(new THREE.Sphere()).radius;
+            const aspect = w / h;
+            const verticalFov = THREE.MathUtils.degToRad(camera.fov);
+            const horizontalFov = 2 * Math.atan(Math.tan(verticalFov / 2) * aspect);
+            const verticalDistance = fitRadius / Math.tan(verticalFov / 2);
+            const horizontalDistance = fitRadius / Math.tan(horizontalFov / 2);
+            const distance = Math.max(verticalDistance, horizontalDistance) * 1.16;
+            const viewDirection = camera.position.clone().sub(controls.target);
+            if (viewDirection.lengthSq() < 1e-6) viewDirection.set(0.08, 0.28, 1);
+            viewDirection.normalize();
+            controls.target.copy(fitCenter);
+            camera.position.copy(fitCenter).add(viewDirection.multiplyScalar(distance));
+            camera.near = Math.max(0.05, distance - fitRadius * 3);
+            camera.far = Math.max(100, distance + fitRadius * 5);
             camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        });
+            controls.update();
+        }
+
+        const resizeMolecule = () => {
+            const w = container.clientWidth, h = container.clientHeight;
+            if (!w || !h) return;
+            camera.aspect = w / h;
+            camera.fov = THREE.MathUtils.radToDeg(2 * Math.atan(Math.tan(THREE.MathUtils.degToRad(48 / 2)) / Math.min(1, camera.aspect)));
+            camera.updateProjectionMatrix();
+            renderer.setSize(w, h, false);
+            fitMoleculeCamera();
+        };
+        new ResizeObserver(resizeMolecule).observe(container);
+        resizeMolecule();
 
         function animate(now) {
             requestAnimationFrame(animate);
             const delta = Math.min(0.04, (now - lastTime) / 1000);
             lastTime = now;
             if (playing) {
-                setProgress(progress + delta * 0.18);
+                // 放慢自动播放，给学生足够时间观察电子迁移、同步成键和键断裂。
+                setProgress(progress + delta * 0.05);
                 if (progress >= 0.999) {
                     playing = false;
                     btnPlay.textContent = "播放当前路径";
