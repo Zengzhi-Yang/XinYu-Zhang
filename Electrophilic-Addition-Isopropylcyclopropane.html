@@ -68,19 +68,19 @@
             position: absolute;
             right: 20px;
             bottom: 20px;
-            width: 480px;
+            width: min(460px, calc(100vw - 40px));
             max-width: calc(100vw - 40px);
-            min-width: 380px;
-            min-height: 320px;
+            min-width: 340px;
+            min-height: 280px;
             background: rgba(255, 255, 255, 0.94);
-            padding: 42px 16px 12px;
+            padding: 12px 14px 8px;
             border-radius: 12px;
             box-shadow: 0 8px 32px rgba(0,0,0,0.16);
             border: 1px solid rgba(0,0,0,0.06);
             pointer-events: auto;
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: 4px;
             overflow: hidden;
         }
         .energy-header {
@@ -88,10 +88,10 @@
             align-items: center;
             justify-content: space-between;
             gap: 10px;
-            margin-bottom: 8px;
+            margin-bottom: 4px;
             color: #333;
             font-weight: 700;
-            font-size: 14px;
+            font-size: 15px;
         }
         #energy-stage-tag {
             color: #d32f2f;
@@ -101,9 +101,9 @@
         }
         #energy-chart {
             width: 100%;
-            height: 230px;
+            height: 232px;
             flex: 1 1 auto;
-            min-height: 230px;
+            min-height: 232px;
             display: block;
         }
 
@@ -142,10 +142,7 @@
             transform: none;
         }
         #energy-caption {
-            margin-top: 8px;
-            color: #555;
-            font-size: 12px;
-            line-height: 1.55;
+            display: none;
         }
         #mechanism-note {
             margin-top: 12px;
@@ -198,46 +195,53 @@
             stroke: #90a4ae;
             stroke-width: 1.2;
         }
+        .energy-axis-label {
+            fill: #546e7a;
+            font-size: 13px;
+            font-weight: 700;
+        }
+        .energy-title {
+            fill: #111;
+            font-size: 18px;
+            font-weight: 800;
+        }
+        .energy-title-sub {
+            fill: #111;
+            font-size: 14px;
+            font-weight: 800;
+        }
         .energy-curve {
             fill: none;
-            stroke: #1e64c8;
-            stroke-width: 3;
+            stroke: #2d1cff;
+            stroke-width: 5;
             stroke-linecap: round;
             stroke-linejoin: round;
         }
         .energy-node {
             stroke: #fff;
-            stroke-width: 1.5;
+            stroke-width: 2;
         }
         .energy-node-label {
-            font-size: 11px;
+            font-size: 16px;
             font-weight: 700;
         }
         .energy-node-label.ts {
-            fill: #c62828;
+            fill: #f44336;
         }
         .energy-node-label.normal {
             fill: #455a64;
         }
-        .energy-value-label {
-            fill: #546e7a;
-            font-size: 10px;
-            font-weight: 700;
-        }
         .energy-marker {
-            fill: #d32f2f;
+            fill: #ff5722;
             stroke: #fff;
-            stroke-width: 2;
+            stroke-width: 3;
+            filter: drop-shadow(0 0 5px rgba(255, 87, 34, 0.75));
         }
         .energy-guide {
-            stroke: rgba(211, 47, 47, 0.45);
-            stroke-dasharray: 4 4;
-            stroke-width: 1.4;
+            display: none;
         }
         .energy-marker-label {
-            fill: #d32f2f;
-            font-size: 11px;
-            font-weight: 700;
+            display: none;
         }
         #controls-hint { position: absolute; bottom: 20px; left: 20px; color: #555; background: rgba(255,255,255,0.8); padding: 10px; border-radius: 8px; font-size: 13px; }
     </style>
@@ -256,14 +260,13 @@
         <label><input type="checkbox" id="cbNumbers" checked> 显示碳原子编号</label>
         <label><input type="checkbox" id="cbHydrogens" checked> 显示碳上的氢原子</label>
         <div id="orbital-legend">
-            <div class="orbital-legend-title">sp³ 电子云颜色图例</div>
+            <div class="orbital-legend-title">电子云颜色图例</div>
             <div class="orbital-legend-row">
-                <span class="orbital-legend-item"><i class="orbital-swatch" style="background:#00ffff"></i>青：sp³ 轨道 A</span>
-                <span class="orbital-legend-item"><i class="orbital-swatch" style="background:#ff66cc"></i>粉：sp³ 轨道 B</span>
-                <span class="orbital-legend-item"><i class="orbital-swatch" style="background:#ffb366"></i>橙：sp³ 轨道 C</span>
-                <span class="orbital-legend-item"><i class="orbital-swatch" style="background:#99ff99"></i>绿：sp³ 轨道 D</span>
+                <span class="orbital-legend-item"><i class="orbital-swatch" style="background:#35a7ff"></i>蓝：C—C σ键电子云</span>
+                <span class="orbital-legend-item"><i class="orbital-swatch" style="background:#ffb347"></i>橙：C—H σ键电子云</span>
+                <span class="orbital-legend-item"><i class="orbital-swatch" style="background:#d95cff"></i>紫：碳正离子空 p轨道</span>
             </div>
-            <div class="orbital-legend-note">颜色用于区分同一碳上的四个 sp³ 杂化轨道，方向应与对应 C-H / C-C 键一致。</div>
+            <div class="orbital-legend-note">绿色箭头表示成键电子对或迁移电子对的运动方向。</div>
         </div>
         
         <button id="btnHBr">下一步：引入 HBr 分子</button>
@@ -281,15 +284,15 @@
 
     <div id="energy-panel" aria-live="polite">
         <div class="energy-header">
-            <span>反应能量图</span>
+            <span>能量变化图</span>
             <span id="energy-stage-tag">反应物</span>
         </div>
         <button id="energyResizeHandle" class="energy-resize-handle" type="button" title="拖动移动能量图" aria-label="拖动移动能量图"></button>
-        <svg id="energy-chart" viewBox="0 0 460 230" role="img" aria-label="反应能量变化示意图">
-            <line class="energy-axis" x1="42" y1="170" x2="332" y2="170"></line>
-            <line class="energy-axis" x1="42" y1="170" x2="42" y2="24"></line>
-            <text x="300" y="192" fill="#607d8b" font-size="11">反应坐标</text>
-            <text x="6" y="30" fill="#607d8b" font-size="11">能量</text>
+        <svg id="energy-chart" viewBox="0 0 460 250" role="img" aria-label="异丙基环丙烷与溴化氢反应能量变化图">
+            <line class="energy-axis" x1="38" y1="205" x2="434" y2="205"></line>
+            <line class="energy-axis" x1="38" y1="205" x2="38" y2="20"></line>
+            <text class="energy-axis-label" x="10" y="122" transform="rotate(-90 10 122)">能量</text>
+            <text class="energy-axis-label" x="192" y="226">反应坐标</text>
             <path id="energy-curve" class="energy-curve"></path>
             <g id="energy-label-layer"></g>
             <line id="energy-guide" class="energy-guide" x1="0" y1="0" x2="0" y2="0"></line>
@@ -399,64 +402,23 @@
     }
 
     const energyPhases = [
-        {
-            key: 'reactant',
-            label: '反应物',
-            plotLabel: '反应物',
-            energy: 0,
-            caption: '反应物定义为 0 kcal/mol，后续质子化开环需要跨越最高能垒。',
-            note: '机理提示：H⁺ 优先靠近并加到含氢较多的 C2 或 C3 上；这样后续正电荷更容易留在取代度更高、更稳定的位置，符合马氏规则的取向判断。'
-        },
-        {
-            key: 'ts1',
-            label: '过渡态 1',
-            plotLabel: 'TS1',
-            energy: 28,
-            caption: 'TS1 位于 +28.0 kcal/mol，是全程最高点，对应速率决定步。',
-            note: '开环位置不是随意选择：质子化后，C1-C2 或 C1-C3 这类张力环内 C-C 键更易极化，断裂它既能释放三元环角张力，也能形成可被重排稳定的碳正离子。'
-        },
-        {
-            key: 'intermediate',
-            label: '中间体 I',
-            plotLabel: '中间体 I',
-            energy: 18,
-            caption: '中间体 I 位于 +18.0 kcal/mol，为能量仍较高的仲碳正离子。',
-            note: '开环后得到 C1⁺ 型碳正离子中间体。它比强张力的断键过渡态稳定，但正电荷仍处在相对不够稳定的位置，因此会继续发生重排。'
-        },
-        {
-            key: 'ts2',
-            label: '过渡态 2',
-            plotLabel: 'TS2',
-            energy: 24,
-            caption: 'TS2 位于 +24.0 kcal/mol，只比中间体 I 高 6.0 kcal/mol，因此氢迁移较快。',
-            note: '重排的本质是 1,2-氢迁移：C4-H 键的电子对随氢迁移到 C1，C1 获得 H 后趋于中性，正电荷转移到更高取代度的 C4。'
-        },
-        {
-            key: 'rearranged',
-            label: '中间体 II',
-            plotLabel: '中间体 II',
-            energy: 8,
-            caption: '中间体 II 位于 +8.0 kcal/mol，是更稳定的叔碳正离子。',
-            note: '这里的 C4⁺ 是更稳定的三级碳正离子，可由邻近 σ 键超共轭分散正电荷；相比中间体 I 约低 10 kcal/mol，为最后的亲核捕获做准备。'
-        },
-        {
-            key: 'ts3',
-            label: '过渡态 3',
-            plotLabel: 'TS3',
-            energy: 12,
-            caption: 'TS3 位于 +12.0 kcal/mol，只比中间体 II 高 4.0 kcal/mol，亲核进攻能垒低。',
-            note: 'Br⁻ 是亲核体，C4⁺ 是亲电中心；两者靠近时形成 C-Br 键，正负电荷逐渐被中和。'
-        },
-        {
-            key: 'product',
-            label: '最终溴代产物',
-            plotLabel: '产物',
-            energy: -35,
-            caption: 'Br⁻ 与 C4⁺ 成键后电荷消失，最终产物约为 -35.0 kcal/mol，反应强放热。',
-            note: '最后一步完成后，C4 重新成为四价碳；动画中的空 p 轨道和正负电荷标签会消失，表示碳正离子已被 Br⁻ 捕获。'
-        }
+        { key: 'reactant', label: '反应物', plotLabel: '反应物', energy: 0, caption: '', note: '' },
+        { key: 'ts1', label: '过渡态 1', plotLabel: 'TS1', energy: 30, caption: '', note: '' },
+        { key: 'intermediate1', label: '中间体 I', plotLabel: '中间体 I', energy: 18, caption: '', note: '' },
+        { key: 'ts2', label: '过渡态 2', plotLabel: 'TS2', energy: 24, caption: '', note: '' },
+        { key: 'intermediate2', label: '中间体 II', plotLabel: '中间体 II', energy: 8, caption: '', note: '' },
+        { key: 'product', label: '生成物', plotLabel: '生成物', energy: -38, caption: '', note: '' }
     ];
-    const energyScale = { left: 42, right: 332, top: 24, bottom: 170, min: -40, max: 32 };
+    const energyScale = { left: 38, right: 434, top: 20, bottom: 205, min: -42, max: 32 };
+    const energyDiagramOrder = ['reactant', 'ts1', 'intermediate1', 'ts2', 'intermediate2', 'product'];
+    const energyDiagramLayout = {
+        reactant: { x: 68 },
+        ts1: { x: 134 },
+        intermediate1: { x: 198 },
+        ts2: { x: 264 },
+        intermediate2: { x: 330 },
+        product: { x: 404 }
+    };
     let energyCurrentIndex = 0;
     let energyTargetIndex = 0;
 
@@ -482,20 +444,34 @@
         return d;
     }
 
-    function formatEnergyValue(value) {
-        if (Math.abs(value) < 0.001) return '0';
-        return `${value > 0 ? '+' : ''}${value.toFixed(1)}`;
+    function getSmoothPoint(points, progress) {
+        const maxIndex = points.length - 1;
+        const current = Math.max(0, Math.min(maxIndex, progress));
+        const seg = Math.min(maxIndex - 1, Math.floor(current));
+        const t = current - seg;
+        const p0 = points[seg - 1] || points[seg];
+        const p1 = points[seg];
+        const p2 = points[seg + 1];
+        const p3 = points[seg + 2] || p2;
+        const cp1x = p1.x + (p2.x - p0.x) / 6;
+        const cp1y = p1.y + (p2.y - p0.y) / 6;
+        const cp2x = p2.x - (p3.x - p1.x) / 6;
+        const cp2y = p2.y - (p3.y - p1.y) / 6;
+        const u = 1 - t;
+        const x = (u * u * u) * p1.x + 3 * (u * u) * t * cp1x + 3 * u * (t * t) * cp2x + (t * t * t) * p2.x;
+        const y = (u * u * u) * p1.y + 3 * (u * u) * t * cp1y + 3 * u * (t * t) * cp2y + (t * t * t) * p2.y;
+        return { x, y };
     }
 
     function getEnergyPoints() {
-        const xStart = 54;
-        const xEnd = 318;
-        const step = (xEnd - xStart) / (energyPhases.length - 1);
-        return energyPhases.map((phase, index) => ({
-            ...phase,
-            x: xStart + step * index,
-            y: energyToY(phase.energy)
-        }));
+        return energyDiagramOrder.map((key) => {
+            const phase = energyPhases.find(item => item.key === key);
+            return {
+                ...phase,
+                x: energyDiagramLayout[key].x,
+                y: energyToY(phase.energy)
+            };
+        });
     }
 
     function renderEnergyDiagram() {
@@ -503,33 +479,25 @@
         energyCurve.setAttribute('d', buildSmoothPath(points));
         energyLabelLayer.innerHTML = '';
 
-        points.forEach((point, index) => {
+        points.forEach((point) => {
             const ns = 'http://www.w3.org/2000/svg';
             const group = document.createElementNS(ns, 'g');
             const dot = document.createElementNS(ns, 'circle');
             dot.setAttribute('cx', point.x);
             dot.setAttribute('cy', point.y);
-            dot.setAttribute('r', point.key === 'intermediate' || point.key === 'rearranged' ? '5.4' : '4.8');
+            dot.setAttribute('r', point.key.startsWith('intermediate') ? '5.3' : '4.8');
             dot.setAttribute('class', 'energy-node');
-            dot.setAttribute('fill', point.key.startsWith('ts') ? '#d32f2f' : (point.key === 'intermediate' || point.key === 'rearranged' ? '#8e24aa' : '#1565c0'));
+            dot.setAttribute('fill', point.key.startsWith('ts') ? '#d32f2f' : (point.key === 'intermediate2' ? '#6a1b9a' : (point.key.startsWith('intermediate') ? '#8e24aa' : '#1565c0')));
 
             const label = document.createElementNS(ns, 'text');
             label.setAttribute('x', point.x);
-            label.setAttribute('y', point.y - (point.key === 'intermediate' || point.key === 'rearranged' ? 14 : 12));
+            label.setAttribute('y', point.y - (point.key.startsWith('intermediate') ? 14 : 12));
             label.setAttribute('text-anchor', 'middle');
             label.setAttribute('class', `energy-node-label ${point.key.startsWith('ts') ? 'ts' : 'normal'}`);
             label.textContent = point.plotLabel || point.label;
 
-            const valueLabel = document.createElementNS(ns, 'text');
-            valueLabel.setAttribute('x', point.x);
-            valueLabel.setAttribute('y', point.y + 15);
-            valueLabel.setAttribute('text-anchor', 'middle');
-            valueLabel.setAttribute('class', 'energy-value-label');
-            valueLabel.textContent = formatEnergyValue(point.energy);
-
             group.appendChild(dot);
             group.appendChild(label);
-            group.appendChild(valueLabel);
             energyLabelLayer.appendChild(group);
         });
     }
@@ -539,20 +507,17 @@
         if (idx < 0) return;
         energyTargetIndex = idx;
         energyStageTag.textContent = energyPhases[idx].label;
-        energyCaption.textContent = energyPhases[idx].caption;
-        mechanismNote.textContent = energyPhases[idx].note;
+        if (energyCaption) energyCaption.textContent = energyPhases[idx].caption;
+        if (mechanismNote) mechanismNote.textContent = energyPhases[idx].note;
     }
 
     function updateEnergyMarker() {
         const points = getEnergyPoints();
-        const maxIndex = points.length - 1;
-        const current = Math.max(0, Math.min(maxIndex, energyCurrentIndex));
-        const seg = Math.min(maxIndex - 1, Math.floor(current));
-        const t = current - seg;
-        const p1 = points[seg];
-        const p2 = points[Math.min(maxIndex, seg + 1)];
-        const x = p1.x + (p2.x - p1.x) * t;
-        const y = p1.y + (p2.y - p1.y) * t;
+        const current = Math.max(0, Math.min(points.length - 1, energyCurrentIndex));
+        const currentPhase = energyPhases[Math.round(Math.max(0, Math.min(energyPhases.length - 1, current)))];
+        const point = getSmoothPoint(points, current);
+        const x = point.x;
+        const y = point.y;
         energyMarker.setAttribute('cx', x);
         energyMarker.setAttribute('cy', y);
         energyGuide.setAttribute('x1', x);
@@ -561,7 +526,6 @@
         energyGuide.setAttribute('y2', energyScale.bottom);
         energyStageLabel.setAttribute('x', x);
         energyStageLabel.setAttribute('y', y - 12);
-        const currentPhase = energyPhases[Math.round(current)];
         energyStageLabel.textContent = currentPhase.plotLabel || currentPhase.label;
     }
 
@@ -573,7 +537,8 @@
     const matEmptyP = new THREE.MeshPhongMaterial({ color: 0xff0000, transparent: true, opacity: 0.4, depthWrite: false });
 
     // 电子云颜色组
-    const lobeColors = [0x00ffff, 0xff66cc, 0xffb366, 0x99ff99]; 
+    const cloudColors = { cc: 0x35a7ff, ch: 0xffb347, emptyP: 0xd95cff };
+    const ringBondKeys = new Set(['C1-C2', 'C2-C3', 'C1-C3']);
     
     // 安全的定时器管理器 (方便在撤销时打断正在进行的延时任务)
     let activeTimeouts = [];
@@ -667,6 +632,9 @@
     scene.add(orbitalGroup);
     const delocalizationGroup = new THREE.Group();
     scene.add(delocalizationGroup);
+    const electronPairGroup = new THREE.Group();
+    scene.add(electronPairGroup);
+    const electronPairTransfers = [];
 
     // 创建原子并记录初始位置(用于撤销恢复)
     for (let key in atomsData) {
@@ -755,9 +723,123 @@
         orientLobeAlongDirection(lobe, targetPos.clone().sub(fromPos));
     }
 
+    function canonicalBondKey(id1, id2) {
+        return [id1, id2].sort().join('-');
+    }
+
+    function getBondCloudColor(id1, id2) {
+        const types = [atomsData[id1]?.type, atomsData[id2]?.type];
+        return types.includes('H') ? cloudColors.ch : cloudColors.cc;
+    }
+
+    function setBondCloudVisible(id1, id2, visible) {
+        const key = canonicalBondKey(id1, id2);
+        orbitalMeshes.forEach(lobe => {
+            if (lobe.userData && lobe.userData.target &&
+                canonicalBondKey(lobe.userData.parentC, lobe.userData.target) === key) {
+                lobe.visible = visible;
+            }
+        });
+    }
+
+    function getRingOutwardDirection(id1, id2) {
+        const thirdByBond = {
+            'C1-C2': 'C3', 'C1-C3': 'C2', 'C2-C3': 'C1'
+        };
+        const p1 = atomMeshes[id1].position;
+        const p2 = atomMeshes[id2].position;
+        const third = atomMeshes[thirdByBond[canonicalBondKey(id1, id2)]].position;
+        const midpoint = p1.clone().add(p2).multiplyScalar(0.5);
+        const centroid = p1.clone().add(p2).add(third).multiplyScalar(1 / 3);
+        const outward = midpoint.sub(centroid);
+        return outward.lengthSq() > 0.0001 ? outward.normalize() : new THREE.Vector3(0, 0, 1);
+    }
+
+    function addElectronPairArrow(start, end, labelText) {
+        const direction = end.clone().sub(start);
+        const length = direction.length();
+        if (length < 0.1) return;
+        const arrow = new THREE.ArrowHelper(direction.normalize(), start, length, 0x2e7d32, 0.28, 0.14);
+        arrow.line.material.depthTest = false;
+        arrow.cone.material.depthTest = false;
+        arrow.userData.flowProgress = 0;
+        arrow.userData.flowStart = start.clone();
+        arrow.userData.flowEnd = end.clone();
+        arrow.userData.flowLabel = labelText;
+        delocalizationGroup.add(arrow);
+    }
+
     function clearDelocalizationArrows() {
         while (delocalizationGroup.children.length > 0) {
             delocalizationGroup.remove(delocalizationGroup.children[0]);
+        }
+    }
+
+    function clearElectronPairTransfers() {
+        electronPairTransfers.splice(0).forEach(transfer => {
+            electronPairGroup.remove(transfer.group);
+            transfer.group.traverse(obj => {
+                if (obj.geometry) obj.geometry.dispose();
+                if (obj.material) obj.material.dispose();
+            });
+        });
+    }
+
+    function createElectronPairBall() {
+        return new THREE.Mesh(
+            new THREE.SphereGeometry(0.075, 20, 12),
+            new THREE.MeshBasicMaterial({ color: 0x22aa55, transparent: true, opacity: 0.98 })
+        );
+    }
+
+    function animateElectronPairTransfer(start, end, control, sourceBond, onComplete) {
+        const group = new THREE.Group();
+        const electronA = createElectronPairBall();
+        const electronB = createElectronPairBall();
+        electronA.position.x = -0.11;
+        electronB.position.x = 0.11;
+        group.add(electronA, electronB);
+        group.position.copy(start);
+        group.visible = false;
+        electronPairGroup.add(group);
+        electronPairTransfers.push({
+            group, electronA, electronB, start: start.clone(), end: end.clone(), control: control.clone(),
+            progress: 0, duration: 2600, sourceBond, onComplete
+        });
+    }
+
+    function updateElectronPairTransfers(deltaMs) {
+        for (let i = electronPairTransfers.length - 1; i >= 0; i--) {
+            const transfer = electronPairTransfers[i];
+            transfer.progress = Math.min(1, transfer.progress + deltaMs / transfer.duration);
+            const t = transfer.progress;
+            const pairT = Math.max(0, Math.min(1, (t - 0.23) / 0.46));
+            if (t >= 0.23 && !transfer.sourceHidden) {
+                setBondCloudVisible(transfer.sourceBond[0], transfer.sourceBond[1], false);
+                const sourceMesh = bondMeshes[transfer.sourceBond.join('-')];
+                if (sourceMesh) sourceMesh.visible = false;
+                transfer.group.visible = true;
+                transfer.sourceHidden = true;
+            }
+            const u = 1 - t;
+            const pos = transfer.start.clone().multiplyScalar(u * u)
+                .add(transfer.control.clone().multiplyScalar(2 * u * t))
+                .add(transfer.end.clone().multiplyScalar(t * t));
+            transfer.group.position.copy(pos);
+            transfer.group.lookAt(camera.position);
+            const bondFormT = Math.max(0, (t - 0.69) / 0.31);
+            const separation = 0.11 * (1 - bondFormT) + 0.23 * bondFormT;
+            transfer.electronA.position.set(-separation, 0, 0);
+            transfer.electronB.position.set(separation, 0, 0);
+            const scale = 1 + bondFormT * 0.8;
+            transfer.group.scale.setScalar(scale * (1 + pairT * 0.05));
+            transfer.electronA.material.opacity = 0.98 * (1 - bondFormT * 0.9);
+            transfer.electronB.material.opacity = 0.98 * (1 - bondFormT * 0.9);
+            if (t >= 1) {
+                electronPairGroup.remove(transfer.group);
+                if (transfer.onComplete) transfer.onComplete();
+                electronPairTransfers.splice(i, 1);
+            }
         }
     }
 
@@ -805,11 +887,19 @@
             });
 
             connectedIds.forEach((targetId, index) => {
-                let color = lobeColors[index % lobeColors.length];
+                let color = getBondCloudColor(cId, targetId);
                 let lobe = createLobe(color);
                 
-                lobe.position.copy(centerPos);
-                orientLobeToTarget(lobe, centerPos, atomMeshes[targetId].position);
+                const isRingBond = atomsData[targetId]?.type === 'C' && ringBondKeys.has(canonicalBondKey(cId, targetId));
+                if (isRingBond) {
+                    const outward = getRingOutwardDirection(cId, targetId);
+                    const target = atomMeshes[targetId].position.clone();
+                    lobe.position.copy(centerPos).add(outward.clone().multiplyScalar(0.18));
+                    orientLobeAlongDirection(lobe, target.sub(centerPos).add(outward.multiplyScalar(0.42)));
+                } else {
+                    lobe.position.copy(centerPos);
+                    orientLobeToTarget(lobe, centerPos, atomMeshes[targetId].position);
+                }
                 lobe.userData = { parentC: cId, target: targetId, origQuat: lobe.quaternion.clone(), isTilting: false };
                 
                 orbitalGroup.add(lobe);
@@ -818,32 +908,32 @@
 
             // ★ 修复：开环与重排后的对称双瓣 P 轨道，并且开环位点指向正确的方向
             if (state === 3 && cId === 'C1') {
-                let emptyLobe = createLobe(0xff0000);
-                emptyLobe.material = matEmptyP;
+                let emptyLobe = createLobe(cloudColors.emptyP);
+                emptyLobe.material = matEmptyP.clone(); emptyLobe.material.color.setHex(cloudColors.emptyP);
                 emptyLobe.position.copy(centerPos);
                 let oldOpenPos = atomsData[openedRingSite].origPos; 
                 orientLobeToTarget(emptyLobe, centerPos, oldOpenPos);
                 emptyLobe.userData = { parentC: 'C1', isP: true };
                 orbitalGroup.add(emptyLobe);
 
-                let emptyLobe2 = createLobe(0xff0000);
-                emptyLobe2.material = matEmptyP;
+                let emptyLobe2 = createLobe(cloudColors.emptyP);
+                emptyLobe2.material = matEmptyP.clone(); emptyLobe2.material.color.setHex(cloudColors.emptyP);
                 emptyLobe2.position.copy(centerPos);
                 let oppDir = centerPos.clone().sub(oldOpenPos).add(centerPos);
                 orientLobeToTarget(emptyLobe2, centerPos, oppDir);
                 orbitalGroup.add(emptyLobe2);
             }
             if (state === 4 && cId === 'C4') {
-                let emptyLobe = createLobe(0xff0000);
-                emptyLobe.material = matEmptyP;
+                let emptyLobe = createLobe(cloudColors.emptyP);
+                emptyLobe.material = matEmptyP.clone(); emptyLobe.material.color.setHex(cloudColors.emptyP);
                 emptyLobe.position.copy(centerPos);
                 let oldHC4Pos = atomsData['H_C4'].origPos; // ★ 修复角度指向原先的H
                 orientLobeToTarget(emptyLobe, centerPos, oldHC4Pos);
                 emptyLobe.userData = { parentC: 'C4', isP: true };
                 orbitalGroup.add(emptyLobe);
 
-                let emptyLobe2 = createLobe(0xff0000);
-                emptyLobe2.material = matEmptyP;
+                let emptyLobe2 = createLobe(cloudColors.emptyP);
+                emptyLobe2.material = matEmptyP.clone(); emptyLobe2.material.color.setHex(cloudColors.emptyP);
                 emptyLobe2.position.copy(centerPos);
                 let oppDir = centerPos.clone().sub(oldHC4Pos).add(centerPos);
                 orientLobeToTarget(emptyLobe2, centerPos, oppDir);
@@ -1088,7 +1178,7 @@
     function triggerRingOpening(ringSite = 'C2') {
         openedRingSite = ringSite;
         state = 3;
-        setEnergyPhase('intermediate');
+        setEnergyPhase('intermediate1');
         instruction.style.display = 'none';
         
         const openAtom = atomMeshes[ringSite];
@@ -1104,6 +1194,14 @@
         let newHPos = openHydrogenTargets[2];
         addAnimTarget(objHBr_H, newHPos, 0.025);
         if(objHBr_H.children[0]) objHBr_H.children[0].visible = false; 
+
+        const sigmaStart = atomMeshes['C1'].position.clone().lerp(openAtom.position, 0.5);
+        const sigmaEnd = openAtom.position.clone().lerp(newHPos, 0.5);
+        const sigmaControl = sigmaStart.clone().lerp(sigmaEnd, 0.5).add(new THREE.Vector3(0, 0.28, 0));
+        animateElectronPairTransfer(sigmaStart, sigmaEnd, sigmaControl, ['C1', ringSite], () => {
+            mechanismNote.textContent = `电子对已在 ${ringSite}—H之间形成新的 σ键。`;
+        });
+        mechanismNote.textContent = `H⁺进攻 ${ringSite}：C1—${ringSite} σ键电子对迁移到 ${ringSite}—H之间，形成新的 C—H键；C1—${ringSite}键断裂，C1形成碳正离子。`;
         
         bondsData.push([ringSite, 'H_new']);
         atomsData['H_new'] = { pos: newHPos, type: 'H' };
@@ -1131,7 +1229,7 @@
             createBond(ringSite, 'H_new');
             btnRearrange.disabled = false;
             btnBrAttack.disabled = true;
-        }, 3400);
+        }, 2800);
     }
 
     btnRearrange.addEventListener('click', () => {
@@ -1139,6 +1237,7 @@
         btnRearrange.disabled = true;
         btnBrAttack.disabled = true;
         setEnergyPhase('ts2');
+        clearDelocalizationArrows();
 
         let shiftH = atomMeshes['H_C4'];
         const remainingRingSite = openedRingSite === 'C2' ? 'C3' : 'C2';
@@ -1146,6 +1245,14 @@
         addAnimTarget(atomMeshes['H_C1'], c1HydrogenTargets[0], 0.016);
         let targetHPos = c1HydrogenTargets[1];
         addAnimTarget(shiftH, targetHPos, 0.018);
+
+        const migrationStart = atomMeshes['C4'].position.clone().lerp(atomsData['H_C4'].origPos, 0.5);
+        const migrationEnd = atomMeshes['C1'].position.clone().lerp(targetHPos, 0.5);
+        const migrationControl = migrationStart.clone().lerp(migrationEnd, 0.5).add(new THREE.Vector3(0, 0.32, 0));
+        animateElectronPairTransfer(migrationStart, migrationEnd, migrationControl, ['C4', 'H_C4'], () => {
+            mechanismNote.textContent = '电子对已与迁移的氢原子共同形成新的 C1—H σ键。';
+        });
+        mechanismNote.textContent = '氢迁移重排：C4—H σ键电子对与氢原子一起迁移到 C1，形成 C1—H键；正电荷由 C1转移到 C4。';
 
         bondsData = bondsData.filter(b => !(b[0]==='C4' && b[1]==='H_C4'));
         bondsData.push(['C1', 'H_C4']);
@@ -1165,15 +1272,15 @@
             }
             createBond('C1', 'H_C4'); 
             generateOrbitals(); 
-            setEnergyPhase('rearranged');
+            setEnergyPhase('intermediate2');
             btnBrAttack.disabled = false;
-        }, 2600);
+        }, 2800);
     });
 
     btnBrAttack.addEventListener('click', () => {
         state = 5;
         btnBrAttack.disabled = true;
-        setEnergyPhase('ts3');
+        setEnergyPhase('product');
 
         preBrAttackPositions = {};
         ['C5', 'C6', 'H_C5_1', 'H_C5_2', 'H_C5_3', 'H_C6_1', 'H_C6_2', 'H_C6_3'].forEach(id => {
@@ -1217,6 +1324,7 @@
     btnUndo.addEventListener('click', () => {
         clearAllTimeouts();
         animationTargets.length = 0; // 停止当前所有动画
+        clearElectronPairTransfers();
 
         if (state === 1) {
             scene.remove(objHBr_H);
@@ -1331,7 +1439,7 @@
             btnBrAttack.disabled = true;
             generateOrbitals();
             forceUpdateBonds();
-            setEnergyPhase('intermediate');
+            setEnergyPhase('intermediate1');
         }
         else if (state === 5) {
             if (preBrAttackPositions) {
@@ -1364,7 +1472,7 @@
             btnClouds.style.backgroundColor = "#ff5722";
             generateOrbitals();
             forceUpdateBonds();
-            setEnergyPhase('rearranged');
+            setEnergyPhase('intermediate2');
         }
 
         btnUndo.disabled = (state === 0);
@@ -1407,7 +1515,7 @@
             if (hyperconjugationActive) {
                 mechanismNote.textContent = "超共轭示意：绿色箭头表示 C5/C6 上 C-H σ 键电子密度向 C4⁺ 空 p 轨道离域，可写作 σ(C-H) → p(C4⁺)。这不是原子在移动，而是电子密度偏移。";
             } else {
-                setEnergyPhase('rearranged');
+                setEnergyPhase('intermediate2');
             }
         }
     }
@@ -1435,6 +1543,11 @@
     function animate() {
         requestAnimationFrame(animate);
         controls.update();
+
+        const now = performance.now();
+        const deltaMs = Math.min(50, now - (animate.lastTime || now));
+        animate.lastTime = now;
+        updateElectronPairTransfers(deltaMs);
 
         for (let i = animationTargets.length - 1; i >= 0; i--) {
             let anim = animationTargets[i];
