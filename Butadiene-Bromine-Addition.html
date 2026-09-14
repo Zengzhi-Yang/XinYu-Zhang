@@ -99,7 +99,7 @@
         }
 
         #energyTitle {
-            font-size: 24px;
+            font-size: 18px;
             line-height: 1.25;
             margin-bottom: 2px;
         }
@@ -376,8 +376,9 @@
 
         #energyReadout {
             color: var(--muted-text);
-            font-size: 16px;
+            font-size: 13px;
             line-height: 1.45;
+            margin-top: -3px;
         }
 
         #bottom-hint {
@@ -414,10 +415,11 @@
         .legend {
             display: flex;
             flex-direction: column;
-            gap: 6px;
-            font-size: 14px;
+            gap: 2px;
+            font-size: 11px;
             color: var(--muted-text);
-            margin-top: 8px;
+            margin-top: -2px;
+            line-height: 1.2;
         }
 
         .legend-row {
@@ -505,8 +507,8 @@
         #ui-panel { position: absolute; top: 18px; left: 18px; width: 374px; max-height: calc(100vh - 36px); padding: 18px; border-radius: 12px; box-shadow: 0 10px 28px var(--shadow); }
         #canvas-container { position: absolute; inset: 0; width: 100%; height: 100%; overflow: hidden; }
         #canvas-container > canvas { display: block; width: 100%; height: 100%; }
-        #energy-panel { position: absolute; right: 18px; bottom: 18px; width: 480px; height: min(500px, calc(100vh - 36px)); min-width: 380px; min-height: 320px; max-height: calc(100vh - 36px); padding: 42px 18px 14px; border-radius: 12px; box-shadow: 0 10px 28px var(--shadow); border: 0; display: flex; }
-        #energySvg { height: 300px; min-height: 236px; flex: 1 1 auto; }
+        #energy-panel { position: absolute; right: 18px; bottom: 18px; width: 480px; height: min(420px, calc(100vh - 36px)); min-width: 380px; min-height: 300px; max-height: calc(100vh - 36px); padding: 24px 18px 6px; border-radius: 12px; box-shadow: 0 10px 28px var(--shadow); border: 0; display: flex; gap: 0; }
+        #energySvg { height: 300px; min-height: 300px; flex: 0 0 300px; }
         button:disabled { opacity: 0.45; cursor: default; transform: none; }
         #bottom-hint { display: block; }
         body.energy-hidden #energy-panel { display: none; }
@@ -1953,7 +1955,7 @@
             { p: 0.26, e: 60, label: "Br-Br离子化 TS" },
             { p: 0.34, e: 42, label: "Br+三元环" },
             { p: 0.45, e: 48, label: "开环TS（示意）" },
-            { p: BRANCH_PROGRESS, e: 24, label: "共同溴鎓离子中间体 · 65%" }
+                    { p: BRANCH_PROGRESS, e: 24, label: "共同溴鎓离子中间体 · 65%" }
         ];
         const pathConfig = {
             common: { title: "二维能量图 · 共同路径与 A/B 分岔", markerColor: "#263238", product: "共同溴鎓离子中间体", energies: commonEnergies },
@@ -2269,7 +2271,8 @@
                     state.br2 = brPos.br2Free.clone();
                     state.br2Charge = "-";
                     state.piTransferProgress = smooth((p - 0.50) / 0.06);
-                    state.bondOrders = { c12: 1, c23: 1, c34: 2 };
+                    // 50% 起 C3=C4 双键断裂为单键；断键电子对从原双键位置开始迁移。
+                    state.bondOrders = { c12: 1, c23: 1, c34: 1 };
                     state.cationSite = "C2";
                     state.stage = "pi-transfer";
                 } else if (p < 0.58) {
@@ -2625,8 +2628,8 @@
                 drawPiCloud(state.atoms.C1, state.atoms.C2, state.bondOrders.c12, state.piC12Opacity);
                 const c23PiOpacity = state.piBuildProgress > 0 ? 0.42 + 0.58 * state.piBuildProgress : 1;
                 const sharedStage = currentPath !== "convert" && progress <= BRANCH_PROGRESS;
-                const hideC23PiCloud = currentPath === "path14" && progress >= 0.57;
-                const hideC34PiCloud = ((currentPath === "path12" || currentPath === "path14") && progress >= 0.09)
+                const hideC23PiCloud = ((currentPath === "path14" || currentPath === "convert") && progress >= 0.57);
+                const hideC34PiCloud = ((currentPath === "path12" || currentPath === "path14" || currentPath === "convert") && progress >= 0.09)
                     || (sharedStage && progress >= 0.20)
                     // 选定 A/B 路径后，沿用“50% 以后隐藏 C3-C4 绿色 π云”的教学显示规则；
                     // 共有阶段虽延长至 65%，双键线条仍保留用于表示键级。
@@ -2925,11 +2928,11 @@
                 } else if (progress < BRANCH_PROGRESS) {
                     stageText.textContent = "61–65%：电子对到达 Br+，生成 Br 与 C2+。";
                     mechanismNote.textContent = "电子对到达 Br+ 附近后消失，Br+ 转为中性的 Br，C2 旁出现 C2+，准备进入公共烯丙基中间体。";
-                    centerHint.textContent = "61–65%：共同烯丙基中间体形成";
+                    centerHint.textContent = "61–65%：溴鎓离子中间体形成";
                 } else {
                     stageText.textContent = "共同中间体 · 65% · 待选择 A / B";
                     mechanismNote.textContent = "C2 与 C4 是同一烯丙基中间体的亲电位点；下一步分别对应 1,2 或 1,4 加成。";
-                    centerHint.textContent = "共同中间体：请选择 A / B 路径";
+                    centerHint.textContent = "61–65%：溴鎓离子中间体形成";
                 }
                 return;
             }
@@ -3139,7 +3142,10 @@
                 curves = `<polyline points="${linePoints(common, 0, BRANCH_PROGRESS)}" fill="none" stroke="#263238" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"></polyline>`
                     + `<polyline points="${linePoints(a, BRANCH_PROGRESS, 1)}" fill="none" stroke="#1565c0" stroke-opacity="${currentPath === "path14" ? 0.32 : 1}" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"></polyline>`
                     + `<polyline points="${linePoints(b, BRANCH_PROGRESS, 1)}" fill="none" stroke="#d84315" stroke-opacity="${currentPath === "path12" ? 0.32 : 1}" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"></polyline>`;
-                labels = labelsFor(common, "#263238") + labelsFor(a, "#1565c0", (d) => d.p > BRANCH_PROGRESS) + labelsFor(b, "#d84315", (d) => d.p > BRANCH_PROGRESS);
+                // A/B 终点统一由右侧能级参考标签标注，避免与曲线末端标签重叠。
+                labels = labelsFor(common, "#263238")
+                    + labelsFor(a, "#1565c0", (d) => d.p > BRANCH_PROGRESS && d.p < 0.999)
+                    + labelsFor(b, "#d84315", (d) => d.p > BRANCH_PROGRESS && d.p < 0.999);
             }
 
             const markerE = energyAt(markerConfig, progress);
@@ -3150,10 +3156,10 @@
             energySvg.innerHTML = `<defs><marker id="energy-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#546e7a"></path></marker></defs>
                 <line x1="${pad.left}" y1="${height - pad.bottom}" x2="${width - pad.right + 8}" y2="${height - pad.bottom}" stroke="#546e7a" stroke-width="1.4" marker-end="url(#energy-arrow)"></line>
                 <line x1="${pad.left}" y1="${height - pad.bottom}" x2="${pad.left}" y2="${pad.top - 8}" stroke="#546e7a" stroke-width="1.4" marker-end="url(#energy-arrow)"></line>
-                <text x="6" y="26" font-size="12" fill="#546e7a">相对能量</text><text x="${width - 74}" y="${height - 8}" font-size="12" fill="#546e7a">反应进程 / %</text>
+                <text x="6" y="26" font-size="12" fill="#546e7a">相对能量</text><text x="${width - 138}" y="${height - 20}" font-size="12" fill="#546e7a">反应进程 / %</text>
                 <line x1="${pad.left}" y1="${guideY_A}" x2="${width - pad.right}" y2="${guideY_A}" stroke="#1565c0" stroke-width="1" stroke-dasharray="4 5" opacity="0.45"></line>
                 <line x1="${pad.left}" y1="${guideY_B}" x2="${width - pad.right}" y2="${guideY_B}" stroke="#d84315" stroke-width="1" stroke-dasharray="4 5" opacity="0.45"></line>
-                <text x="${width - 22}" y="${guideY_A - 5}" text-anchor="end" font-size="12" fill="#1565c0">A</text><text x="${width - 22}" y="${guideY_B + 16}" text-anchor="end" font-size="12" fill="#d84315">B 更低</text>
+                <text x="${width - 6}" y="${guideY_A - 8}" text-anchor="end" font-size="12" fill="#1565c0">A 产物</text><text x="${width - 6}" y="${guideY_B - 8}" text-anchor="end" font-size="12" fill="#d84315">B 产物</text>
                 <text x="${xFor(0)}" y="${height - 10}" text-anchor="middle" font-size="11" fill="#546e7a">0</text><text x="${xFor(BRANCH_PROGRESS)}" y="${height - 10}" text-anchor="middle" font-size="11" fill="#546e7a">65</text><text x="${xFor(1)}" y="${height - 10}" text-anchor="middle" font-size="11" fill="#546e7a">100</text>
                 ${curves}${labels}<line x1="${markerX}" y1="${height - pad.bottom}" x2="${markerX}" y2="${markerY}" stroke="#263238" stroke-width="1.2" stroke-dasharray="4 4"></line><circle cx="${markerX}" cy="${markerY}" r="7" fill="${markerConfig.markerColor}" stroke="#ffffff" stroke-width="2"></circle>`;
             btnProduct.disabled = currentPath === "common";
