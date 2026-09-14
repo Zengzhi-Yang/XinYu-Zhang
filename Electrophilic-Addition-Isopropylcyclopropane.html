@@ -259,6 +259,7 @@
         <button id="btnClouds">观察 sp³ 电子云</button>
         <label><input type="checkbox" id="cbNumbers" checked> 显示碳原子编号</label>
         <label><input type="checkbox" id="cbHydrogens" checked> 显示碳上的氢原子</label>
+        <label><input type="checkbox" id="cbEnergy" checked> 显示能量变化图</label>
         <div id="orbital-legend">
             <div class="orbital-legend-title">电子云颜色图例</div>
             <div class="orbital-legend-row">
@@ -338,6 +339,7 @@
     const btnClouds = document.getElementById('btnClouds');
     const cbNumbers = document.getElementById('cbNumbers');
     const cbHydrogens = document.getElementById('cbHydrogens');
+    const cbEnergy = document.getElementById('cbEnergy');
     const btnHBr = document.getElementById('btnHBr');
     const btnCleave = document.getElementById('btnCleave');
     const btnRearrange = document.getElementById('btnRearrange');
@@ -354,6 +356,15 @@
     const energyCaption = document.getElementById('energy-caption');
     const energyPanel = document.getElementById('energy-panel');
     const energyResizeHandle = document.getElementById('energyResizeHandle');
+
+    function updateEnergyVisibility() {
+        if (!energyPanel || !cbEnergy) return;
+        const visible = cbEnergy.checked;
+        energyPanel.style.display = visible ? 'flex' : 'none';
+        energyPanel.setAttribute('aria-hidden', String(!visible));
+    }
+    updateEnergyVisibility();
+    cbEnergy.addEventListener('change', updateEnergyVisibility);
 
     if (energyPanel && energyResizeHandle) {
         let dragging = false;
