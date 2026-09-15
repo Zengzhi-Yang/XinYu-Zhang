@@ -2771,6 +2771,13 @@
             drawElectronPair(rightUpper, new THREE.Vector3(1, 0, 0), opacity, 0.18, color);
         }
 
+        function drawBromoniumLowerPairs(center, opacity = 1, color = colors.brominePair) {
+            const leftLower = center.clone().add(new THREE.Vector3(-0.42, -0.42, 0.42));
+            const rightLower = center.clone().add(new THREE.Vector3(0.42, -0.42, 0.42));
+            drawElectronPair(leftLower, new THREE.Vector3(1, 0, 0), opacity, 0.18, color);
+            drawElectronPair(rightLower, new THREE.Vector3(1, 0, 0), opacity, 0.18, color);
+        }
+
         function drawSynchronousBondFormation(state) {
             const br = state.br1;
             const c1 = state.atoms.C1;
@@ -2801,8 +2808,9 @@
             const control = bondMid.clone().lerp(target, 0.5).add(new THREE.Vector3(0.20, 0.42, 0.12));
             const t = state.bondReturnProgress;
             if (state.br1Charge === "+") {
-                // 断键回迁阶段只保留 Br+ 上方两对孤对电子；左下/右下单电子已经参与成键，应消失。
-                drawBromoniumUpperPairs(br, 1, colors.brominePair);
+                // 57% 起进入断键回迁阶段：Br+ 的两对孤对电子移到左下/右下，
+                // 原先参与成键的两个下方单电子不再单独显示。
+                drawBromoniumLowerPairs(br, 1, colors.brominePair);
                 const center = quadraticPoint(bondMid, control, target, clamp01(t));
                 const pathAxis = target.clone().sub(bondMid).normalize();
                 const pairAxis = pathAxis.lerp(target.clone().sub(bondMid).normalize(), smooth(clamp01(t))).normalize();
