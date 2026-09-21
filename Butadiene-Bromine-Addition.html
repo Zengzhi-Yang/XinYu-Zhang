@@ -2771,13 +2771,6 @@
             drawElectronPair(rightUpper, new THREE.Vector3(1, 0, 0), opacity, 0.18, color);
         }
 
-        function drawBromoniumLowerPairs(center, opacity = 1, color = colors.brominePair) {
-            const leftLower = center.clone().add(new THREE.Vector3(-0.42, -0.42, 0.42));
-            const rightLower = center.clone().add(new THREE.Vector3(0.42, -0.42, 0.42));
-            drawElectronPair(leftLower, new THREE.Vector3(1, 0, 0), opacity, 0.18, color);
-            drawElectronPair(rightLower, new THREE.Vector3(1, 0, 0), opacity, 0.18, color);
-        }
-
         function drawSynchronousBondFormation(state) {
             const br = state.br1;
             const c1 = state.atoms.C1;
@@ -2808,9 +2801,8 @@
             const control = bondMid.clone().lerp(target, 0.5).add(new THREE.Vector3(0.20, 0.42, 0.12));
             const t = state.bondReturnProgress;
             if (state.br1Charge === "+") {
-                // 57% 起进入断键回迁阶段：Br+ 的两对孤对电子移到左下/右下，
-                // 原先参与成键的两个下方单电子不再单独显示。
-                drawBromoniumLowerPairs(br, 1, colors.brominePair);
+                // 断键回迁阶段只保留 Br+ 上方两对孤对电子；左下/右下单电子已经参与成键，应消失。
+                drawBromoniumUpperPairs(br, 1, colors.brominePair);
                 const center = quadraticPoint(bondMid, control, target, clamp01(t));
                 const pathAxis = target.clone().sub(bondMid).normalize();
                 const pairAxis = pathAxis.lerp(target.clone().sub(bondMid).normalize(), smooth(clamp01(t))).normalize();
@@ -3041,7 +3033,7 @@
                 energies: [
                     { p: 0, e: 20, label: "反应物" },
                     { p: 0.31, e: 58, label: "TS1" },
-                    { p: BRANCH_PROGRESS, e: 24, label: "溴鎓离子中间体 · 65%" }
+                    { p: BRANCH_PROGRESS, e: 24, label: "溴鎓离子中间体 · 50%" }
                 ]
             },
             path12: {
@@ -3116,6 +3108,30 @@
             return samples;
         }
 
+        function energyDisplayProgress(p) {
+            const clamped = clamp01(p);
+            if (currentPath !== "path12" && currentPath !== "path14") return clamped;
+            if (clamped <= BRANCH_PROGRESS) {
+                return clamped * 0.50 / BRANCH_PROGRESS;
+            }
+            return 0.50 + (clamped - BRANCH_PROGRESS) * 0.50 / (1 - BRANCH_PROGRESS);
+        }
+
+        function energyMarkerProgress(p) {
+            const clamped = clamp01(p);
+            if (currentPath === "path12" || currentPath === "path14") return clamped;
+            return energyDisplayProgress(clamped);
+        }
+
+        function energyProgressForMarkerCurve(p) {
+            const clamped = clamp01(p);
+            if (currentPath !== "path12" && currentPath !== "path14") return clamped;
+            if (clamped <= 0.50) {
+                return clamped * BRANCH_PROGRESS / 0.50;
+            }
+            return BRANCH_PROGRESS + (clamped - 0.50) * (1 - BRANCH_PROGRESS) / 0.50;
+        }
+
         function drawEnergyCurve() {
             energyPanel.style.display = cbEnergy.checked ? "flex" : "none";
             document.body.classList.toggle("energy-hidden", !cbEnergy.checked);
@@ -3130,10 +3146,10 @@
             const yFor = (e) => pad.top + (maxE - e) / (maxE - minE) * plotH;
             const converting = currentPath === "convert";
             const markerConfig = energyGraphConfigs[currentPath];
-            const linePoints = (config, from = 0, to = 1) => sampleEnergy(config, 140, from, to).map((d) => `${xFor(d.p).toFixed(1)},${yFor(d.e).toFixed(1)}`).join(" ");
+            const linePoints = (config, from = 0, to = 1) => sampleEnergy(config, 140, from, to).map((d) => `${xFor(energyDisplayProgress(d.p)).toFixed(1)},${yFor(d.e).toFixed(1)}`).join(" ");
             const esc = (value) => String(value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
             const labelsFor = (config, color, predicate = () => true) => config.energies.filter(predicate).map((d) => {
-                const x = xFor(d.p), y = yFor(d.e);
+                const x = xFor(energyDisplayProgress(d.p)), y = yFor(d.e);
                 const anchor = d.p > 0.84 ? "end" : d.p < 0.08 ? "start" : "middle";
                 const dy = d.e > 42 ? -8 : 18;
                 return `<circle cx="${x}" cy="${y}" r="3.3" fill="${color}"></circle><text x="${x}" y="${y + dy}" text-anchor="${anchor}" font-size="12" fill="${color}">${esc(d.label)}</text>`;
@@ -3156,8 +3172,8 @@
                     + labelsFor(b, "#d84315", (d) => d.p > BRANCH_PROGRESS && d.p < 0.999);
             }
 
-            const markerE = energyAt(markerConfig, progress);
-            const markerX = xFor(progress), markerY = yFor(markerE);
+            const markerE = energyAt(markerConfig, energyProgressForMarkerCurve(progress));
+            const markerX = xFor(energyMarkerProgress(progress)), markerY = yFor(markerE);
             const guideY_A = yFor(16), guideY_B = yFor(2);
             energyTitle.textContent = markerConfig.title;
             energyReadout.textContent = `定性示意 · 相对能量 ${markerE.toFixed(1)} · ${Math.round(progress * 100)}% · ${currentPath === "common" ? (progress === BRANCH_PROGRESS ? "待选择 A / B" : "共同阶段") : pathConfig[currentPath].product}`;
@@ -3168,7 +3184,7 @@
                 <line x1="${pad.left}" y1="${guideY_A}" x2="${width - pad.right}" y2="${guideY_A}" stroke="#1565c0" stroke-width="1" stroke-dasharray="4 5" opacity="0.45"></line>
                 <line x1="${pad.left}" y1="${guideY_B}" x2="${width - pad.right}" y2="${guideY_B}" stroke="#d84315" stroke-width="1" stroke-dasharray="4 5" opacity="0.45"></line>
                 <text x="${width - 6}" y="${guideY_A - 8}" text-anchor="end" font-size="12" fill="#1565c0">A 产物</text><text x="${width - 6}" y="${guideY_B - 8}" text-anchor="end" font-size="12" fill="#d84315">B 产物</text>
-                <text x="${xFor(0)}" y="${height - 10}" text-anchor="middle" font-size="11" fill="#546e7a">0</text><text x="${xFor(BRANCH_PROGRESS)}" y="${height - 10}" text-anchor="middle" font-size="11" fill="#546e7a">65</text><text x="${xFor(1)}" y="${height - 10}" text-anchor="middle" font-size="11" fill="#546e7a">100</text>
+                <text x="${xFor(energyDisplayProgress(0))}" y="${height - 10}" text-anchor="middle" font-size="11" fill="#546e7a">0</text><text x="${xFor(energyDisplayProgress(BRANCH_PROGRESS))}" y="${height - 10}" text-anchor="middle" font-size="11" fill="#546e7a">${currentPath === "path12" || currentPath === "path14" ? "50" : "65"}</text><text x="${xFor(energyDisplayProgress(1))}" y="${height - 10}" text-anchor="middle" font-size="11" fill="#546e7a">100</text>
                 ${curves}${labels}<line x1="${markerX}" y1="${height - pad.bottom}" x2="${markerX}" y2="${markerY}" stroke="#263238" stroke-width="1.2" stroke-dasharray="4 4"></line><circle cx="${markerX}" cy="${markerY}" r="7" fill="${markerConfig.markerColor}" stroke="#ffffff" stroke-width="2"></circle>`;
             btnProduct.disabled = currentPath === "common";
         }
